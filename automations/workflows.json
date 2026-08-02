@@ -1,0 +1,59 @@
+{
+  "description": "Automações a configurar no CRM (HubSpot Workflows) ou num orquestrador externo (Zapier/Make) enquanto o HubSpot não estiver totalmente configurado. Ver docs/crm-especificacao.md secção 6 para o racional de negócio de cada uma.",
+  "workflows": [
+    {
+      "id": "new-lead-notification",
+      "trigger": "Novo lead criado (submissão do formulário via website/src/app/api/contact/route.ts)",
+      "action": "Notificar comercial responsável + criar tarefa de qualificação com prazo de 2h",
+      "status": "a configurar no HubSpot"
+    },
+    {
+      "id": "visit-confirmation",
+      "trigger": "Negócio move para etapa 'Visita Agendada'",
+      "action": "Enviar WhatsApp de confirmação automático 24h antes da visita",
+      "status": "a configurar — requer integração WhatsApp Business API ou Twilio"
+    },
+    {
+      "id": "proposal-followup",
+      "trigger": "Negócio move para etapa 'Proposta Enviada'",
+      "action": "Criar tarefas de follow-up automáticas a 48h e a 5 dias",
+      "status": "a configurar no HubSpot"
+    },
+    {
+      "id": "stale-proposal-close",
+      "trigger": "10 dias sem resposta após 'Proposta Enviada'",
+      "action": "Mover para 'Fechado — Perdido' + disparar sequência post_close_no_response (ver email-sequences/)",
+      "status": "a configurar no HubSpot"
+    },
+    {
+      "id": "deal-won-handover",
+      "trigger": "Negócio marcado 'Fechado — Ganho'",
+      "action": "Criar registo na Pipeline de Projeto em 'Handover' + tarefa de agendamento de kickoff",
+      "status": "a configurar no HubSpot"
+    },
+    {
+      "id": "weekly-report-reminder",
+      "trigger": "Sexta-feira 9h, para todo o negócio em 'Execução'",
+      "action": "Lembrete automático ao gestor de projeto para enviar o reporte semanal ao cliente",
+      "status": "a configurar no HubSpot (workflow agendado)"
+    },
+    {
+      "id": "risk-flag-notification",
+      "trigger": "Etiqueta 'Risco-Prazo' aplicada a um negócio",
+      "action": "Notificar diretor de operações imediatamente",
+      "status": "a configurar no HubSpot"
+    },
+    {
+      "id": "post-delivery-testimonial",
+      "trigger": "Negócio entra em 'Entregue'",
+      "action": "Agendar tarefa de pedido de testemunho a 15 dias e pedido de referência a 30 dias + disparar sequência post_project_referral",
+      "status": "a configurar no HubSpot"
+    },
+    {
+      "id": "lead-magnet-nurture",
+      "trigger": "Lead qualificado sem visita agendada há 5 dias",
+      "action": "Disparar sequência lead_nurture (4 emails ao longo de 3 semanas)",
+      "status": "a configurar no HubSpot (Sequences)"
+    }
+  ]
+}
