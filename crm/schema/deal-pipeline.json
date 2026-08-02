@@ -1,0 +1,31 @@
+{
+  "description": "Duas pipelines distintas, conforme docs/crm-especificacao.md — comercial (pré-venda) e projeto (pós-fecho).",
+  "pipelines": [
+    {
+      "name": "Pipeline Comercial",
+      "stages": [
+        { "order": 1, "label": "Novo Lead", "probability": 0.05 },
+        { "order": 2, "label": "Qualificado", "probability": 0.15 },
+        { "order": 3, "label": "Visita Agendada", "probability": 0.3 },
+        { "order": 4, "label": "Visita Realizada", "probability": 0.4 },
+        { "order": 5, "label": "Proposta Enviada", "probability": 0.5 },
+        { "order": 6, "label": "Em Negociação", "probability": 0.7 },
+        { "order": 7, "label": "Fechado — Ganho", "probability": 1.0, "closedWon": true },
+        { "order": 8, "label": "Fechado — Perdido", "probability": 0.0, "closedLost": true }
+      ]
+    },
+    {
+      "name": "Pipeline de Projeto",
+      "stages": [
+        { "order": 1, "label": "Handover" },
+        { "order": 2, "label": "Kickoff Agendado" },
+        { "order": 3, "label": "Preparação" },
+        { "order": 4, "label": "Execução" },
+        { "order": 5, "label": "Controlo de Qualidade" },
+        { "order": 6, "label": "Vistoria com Cliente" },
+        { "order": 7, "label": "Entregue" },
+        { "order": 8, "label": "Pós-obra / Garantia Ativa" }
+      ]
+    }
+  ]
+}

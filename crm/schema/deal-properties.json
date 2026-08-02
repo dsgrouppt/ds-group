@@ -1,0 +1,30 @@
+{
+  "description": "Propriedades de negócio (Deal) a criar no CRM, além dos campos nativos (amount, closedate, dealstage).",
+  "properties": [
+    { "name": "margem_estimada_pct", "label": "Margem estimada (%)", "type": "number", "internalOnly": true },
+    { "name": "data_visita_tecnica", "label": "Data de visita técnica", "type": "date" },
+    { "name": "data_envio_proposta", "label": "Data de envio de proposta", "type": "date" },
+    { "name": "comercial_responsavel", "label": "Comercial responsável", "type": "enumeration", "fieldType": "select" },
+    {
+      "name": "motivo_perda",
+      "label": "Motivo de perda",
+      "type": "enumeration",
+      "fieldType": "select",
+      "options": [
+        { "label": "Preço", "value": "preco" },
+        { "label": "Prazo", "value": "prazo" },
+        { "label": "Escolheu concorrente", "value": "concorrente" },
+        { "label": "Adiou projeto", "value": "adiou" },
+        { "label": "Sem resposta", "value": "sem_resposta" }
+      ]
+    }
+  ],
+  "tags": [
+    { "name": "VIP", "meaning": "Cliente investidor com potencial de projetos recorrentes" },
+    { "name": "Referência-Arquiteto", "meaning": "Lead vindo de gabinete parceiro" },
+    { "name": "Risco-Prazo", "meaning": "Projeto com atraso identificado — sinaliza atenção de direção" },
+    { "name": "Risco-Financeiro", "meaning": "Pagamento em atraso" },
+    { "name": "Promotor", "meaning": "Cliente que já deu testemunho ou referência" },
+    { "name": "Reincidente", "meaning": "Segundo projeto ou mais com a DS" }
+  ]
+}

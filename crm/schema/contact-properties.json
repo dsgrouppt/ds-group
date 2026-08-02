@@ -1,0 +1,47 @@
+{
+  "description": "Propriedades de contacto a criar no HubSpot (ou CRM equivalente). Nomes de 'name' correspondem exactamente aos campos já enviados por website/src/app/api/contact/route.ts — criar estas propriedades antes de ativar o formulário em produção.",
+  "properties": [
+    { "name": "firstname", "label": "Nome", "type": "string", "fieldType": "text", "builtIn": true },
+    { "name": "email", "label": "Email", "type": "string", "fieldType": "text", "builtIn": true },
+    { "name": "phone", "label": "Telefone", "type": "string", "fieldType": "phonenumber", "builtIn": true },
+    {
+      "name": "project_type",
+      "label": "Tipo de projeto",
+      "type": "enumeration",
+      "fieldType": "select",
+      "options": [
+        { "label": "Habitação (apartamento ou casa)", "value": "residencial" },
+        { "label": "Moradia", "value": "moradia" },
+        { "label": "Espaço comercial", "value": "comercial" },
+        { "label": "Investimento / portefólio de imóveis", "value": "investimento" }
+      ]
+    },
+    {
+      "name": "budget_range",
+      "label": "Faixa de orçamento estimado",
+      "type": "enumeration",
+      "fieldType": "select",
+      "options": [
+        { "label": "20.000€ – 30.000€", "value": "20k-30k" },
+        { "label": "30.000€ – 75.000€", "value": "30k-75k" },
+        { "label": "75.000€ – 150.000€", "value": "75k-150k" },
+        { "label": "150.000€ ou mais", "value": "150k+" }
+      ]
+    },
+    { "name": "message", "label": "Mensagem", "type": "string", "fieldType": "textarea" },
+    {
+      "name": "lead_source_detail",
+      "label": "Origem do lead",
+      "type": "enumeration",
+      "fieldType": "select",
+      "options": [
+        { "label": "Google Ads", "value": "google_ads" },
+        { "label": "Meta Ads", "value": "meta_ads" },
+        { "label": "Referência", "value": "referencia" },
+        { "label": "SEO orgânico", "value": "seo_organico" },
+        { "label": "Google Business Profile", "value": "gbp" }
+      ],
+      "note": "Não é enviado automaticamente pelo formulário atual — preencher via parâmetro UTM na automação (ver /automations/workflows.json) ou manualmente pelo comercial."
+    }
+  ]
+}
