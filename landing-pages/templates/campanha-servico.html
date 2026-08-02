@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{HEADLINE}} — DS Projects</title>
+<meta name="description" content="{{META_DESCRIPTION}}">
+<!--
+  MODELO DE LANDING PAGE DE CAMPANHA — DS Projects
+  ==================================================
+  Uso: duplicar este ficheiro por campanha (Google Ads / Meta Ads), substituir
+  todos os campos {{ENTRE_CHAVETAS}} e publicar em /landing-pages/campanhas/<slug>.html
+  ou como página dedicada dentro do website Next.js (recomendado — ver README.md
+  desta pasta para a diferença entre as duas abordagens).
+
+  Regras de marca (não alterar):
+  - Sem menção a preço, desconto ou urgência artificial.
+  - Sem iconografia literal de construção (casas, telhados, martelos).
+  - CTA único e consistente: "Pedir Estudo de Viabilidade".
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --black:#0a0a0a; --graphite:#3a3a3c; --mist:#eeeeec; --paper:#f7f7f5;
+    --white:#ffffff; --gold:#b08d57; --ease:cubic-bezier(.16,1,.3,1);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Inter',sans-serif;color:var(--black);line-height:1.6;-webkit-font-smoothing:antialiased;}
+  .container{max-width:1100px;margin:0 auto;padding:0 6vw;}
+  .eyebrow{font-size:.72rem;letter-spacing:.28em;text-transform:uppercase;color:var(--gold);font-weight:500;margin-bottom:1.2rem;}
+  h1,h2{font-family:'Fraunces',serif;font-weight:400;letter-spacing:-.01em;}
+  .btn{display:inline-flex;padding:1rem 2rem;font-size:.78rem;letter-spacing:.15em;text-transform:uppercase;font-weight:500;border:1px solid currentColor;border-radius:2px;cursor:pointer;background:none;transition:all .4s var(--ease);}
+  .btn-dark{color:#fff;border-color:#fff;} .btn-dark:hover{background:#fff;color:var(--black);}
+  .btn-light{color:var(--black);border-color:var(--black);} .btn-light:hover{background:var(--black);color:#fff;}
+
+  .hero{background:var(--black);color:#fff;padding:6rem 0 5rem;text-align:center;}
+  .hero h1{font-size:clamp(2rem,5vw,3.4rem);line-height:1.15;max-width:18ch;margin:0 auto 1.4rem;}
+  .hero p{color:var(--mist);font-weight:300;max-width:52ch;margin:0 auto 2.4rem;font-size:1.05rem;}
+
+  .value-props{padding:4.5rem 0;background:var(--paper);}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:2rem;}
+  .value-props h3{font-size:1.15rem;margin-bottom:.6rem;}
+  .value-props p{font-size:.92rem;color:var(--graphite);font-weight:300;}
+
+  .form-section{padding:5rem 0;background:var(--white);}
+  .form-section .container{max-width:560px;}
+  .form-section h2{font-size:1.8rem;margin-bottom:2rem;text-align:center;}
+  .field{margin-bottom:1.2rem;}
+  .field label{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--graphite);display:block;margin-bottom:.5rem;}
+  .field input,.field select{width:100%;border:1px solid #d5d5d2;padding:.85rem 1rem;font-family:'Inter',sans-serif;font-size:.95rem;border-radius:2px;}
+  .honeypot{position:absolute;left:-9999px;opacity:0;}
+  #form-status{margin-top:1rem;font-size:.85rem;}
+
+  footer{padding:2.5rem 0;text-align:center;font-size:.78rem;color:#7c7c7e;background:var(--black);}
+
+  @media (max-width:768px){ .grid3{grid-template-columns:1fr;} }
+</style>
+</head>
+<body>
+
+<section class="hero">
+  <div class="container">
+    <div class="eyebrow">DS PROJECTS — UMA EMPRESA DS GROUP</div>
+    <h1>{{HEADLINE}}</h1>
+    <p>{{SUBHEADLINE}}</p>
+    <a href="#formulario" class="btn btn-dark">Pedir Estudo de Viabilidade</a>
+  </div>
+</section>
+
+<section class="value-props">
+  <div class="container grid3">
+    <div>
+      <h3>{{VALOR_1_TITULO}}</h3>
+      <p>{{VALOR_1_TEXTO}}</p>
+    </div>
+    <div>
+      <h3>{{VALOR_2_TITULO}}</h3>
+      <p>{{VALOR_2_TEXTO}}</p>
+    </div>
+    <div>
+      <h3>{{VALOR_3_TITULO}}</h3>
+      <p>{{VALOR_3_TEXTO}}</p>
+    </div>
+  </div>
+</section>
+
+<section class="form-section" id="formulario">
+  <div class="container">
+    <h2>Fale-nos do seu projeto</h2>
+    <form id="lp-form">
+      <div class="honeypot"><label for="website">Não preencher</label><input type="text" id="website" name="website" tabindex="-1" autocomplete="off"></div>
+      <div class="field"><label for="firstname">Nome</label><input type="text" id="firstname" name="firstname" required></div>
+      <div class="field"><label for="phone">Telefone</label><input type="tel" id="phone" name="phone" required></div>
+      <div class="field"><label for="email">Email</label><input type="email" id="email" name="email" required></div>
+      <div class="field">
+        <label for="budget_range">Orçamento estimado</label>
+        <select id="budget_range" name="budget_range" required>
+          <option value="" disabled selected>Selecionar</option>
+          <option value="20k-30k">20.000€ – 30.000€</option>
+          <option value="30k-75k">30.000€ – 75.000€</option>
+          <option value="75k-150k">75.000€ – 150.000€</option>
+          <option value="150k+">150.000€ ou mais</option>
+        </select>
+      </div>
+      <input type="hidden" name="project_type" value="{{PROJECT_TYPE}}">
+      <label style="display:flex;gap:.6rem;font-size:.78rem;color:var(--graphite);margin-bottom:1.2rem;">
+        <input type="checkbox" name="consent" required style="margin-top:.2rem;">
+        Autorizo o tratamento dos meus dados pela DS Projects para ser contactado sobre este pedido.
+      </label>
+      <button type="submit" class="btn btn-light" style="width:100%;">Pedir Estudo de Viabilidade</button>
+      <div id="form-status"></div>
+    </form>
+  </div>
+</section>
+
+<footer>© <span id="year"></span> DS Projects — Uma empresa DS Group.</footer>
+
+<script>
+  document.getElementById('year').textContent = new Date().getFullYear();
+
+  // Submete para a MESMA rota de API do website principal (website/src/app/api/contact/route.ts).
+  // Se esta landing page for publicada num domínio/subdomínio diferente do
+  // website principal, adicionar CORS a essa rota antes de publicar — ver
+  // landing-pages/README.md.
+  const API_ENDPOINT = "https://www.dsprojects.pt/api/contact";
+
+  document.getElementById('lp-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const status = document.getElementById('form-status');
+    const data = new FormData(form);
+
+    if (data.get('website')) return; // honeypot
+
+    status.textContent = 'A enviar…';
+    try {
+      const res = await fetch(API_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstname: data.get('firstname'),
+          email: data.get('email'),
+          phone: data.get('phone'),
+          project_type: data.get('project_type'),
+          budget_range: data.get('budget_range'),
+          consent: data.get('consent') === 'on',
+          website: data.get('website') || '',
+          pageUri: window.location.href,
+          pageName: 'Landing — {{HEADLINE}}',
+        }),
+      });
+      if (!res.ok) throw new Error();
+      status.style.color = '#2e7d32';
+      status.textContent = 'Obrigado — entraremos em contacto em breve.';
+      form.reset();
+      // Disparar conversão no gtag/fbq/dataLayer do GTM instalado nesta página, se existir.
+      if (window.dataLayer) window.dataLayer.push({ event: 'generate_lead', form_name: 'landing_{{PROJECT_TYPE}}' });
+      if (window.fbq) window.fbq('track', 'Lead');
+    } catch {
+      status.style.color = '#c62828';
+      status.textContent = 'Não foi possível enviar. Tente novamente ou ligue diretamente.';
+    }
+  });
+</script>
+
+<!-- Inserir aqui o snippet do Google Tag Manager (ver /docs ou o GTM_ID do website principal) -->
+
+</body>
+</html>
