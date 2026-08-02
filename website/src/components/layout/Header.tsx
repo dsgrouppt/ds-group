@@ -24,23 +24,32 @@ export function Header() {
         };
   }, [menuOpen]);
 
-  // Navegação robusta para âncoras (#seccao) na mesma página.
-  // Corrige uma falha intermitente em que o next/link não fazia scroll
-  // até à seccao quando o utilizador já se encontrava na homepage.
-  const handleAnchorClick = (
-        e: React.MouseEvent<HTMLAnchorElement>,
-        href: string
-      ) => {
-            if (href.startsWith("/#") && window.location.pathname === "/") {
-                    const id = href.slice(2);
-                    const el = document.getElementById(id);
-                    if (el) {
+    // Navegação robusta para âncoras (#seccao) na mesma página.
+      // Corrige uma falha em que o scroll nativo/next-link falhava para
+      // secções muito abaixo na página (layout/altura ainda a estabilizar).
+      // Faz várias tentativas de scrollIntoView para garantir o resultado.
+      const handleAnchorClick = (
+              e: React.MouseEvent<HTMLAnchorElement>,
+              href: string
+            ) => {
+                    if (href.startsWith("/#") && window.location.pathname === "/") {
+                              const id = href.slice(2);
                               e.preventDefault();
-                              el.scrollIntoView({ behavior: "smooth", block: "start" });
                               window.history.pushState(null, "", href);
+                              let attempts = 0;
+                              const tryScroll = () => {
+                                          const el = document.getElementById(id);
+                                          if (el) {
+                                                        el.scrollIntoView({ behavior: "smooth", block: "start" });
+                                          }
+                                          attempts += 1;
+                                          if (attempts < 6) {
+                                                        setTimeout(tryScroll, 150);
+                                          }
+                              };
+                              tryScroll();
                     }
-            }
-      };
+            };
 
   return (
         <>
