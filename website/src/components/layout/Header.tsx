@@ -6,76 +6,114 @@ import { mainNav, siteConfig } from "@/lib/site-data";
 import { cn } from "@/lib/utils";
 
 export function Header() {
-  const [scrolled, setScrolled] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
+    const [scrolled, setScrolled] = useState(false);
+    const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 60);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+        const onScroll = () => setScrolled(window.scrollY > 60);
+        onScroll();
+        window.addEventListener("scroll", onScroll, { passive: true });
+        return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   // Bloqueia o scroll do body quando o menu mobile está aberto.
   useEffect(() => {
-    document.body.style.overflow = menuOpen ? "hidden" : "";
-    return () => {
-      document.body.style.overflow = "";
-    };
+        document.body.style.overflow = menuOpen ? "hidden" : "";
+        return () => {
+                document.body.style.overflow = "";
+        };
   }, [menuOpen]);
 
+  // Navegação robusta para âncoras (#seccao) na mesma página.
+  // Corrige uma falha intermitente em que o next/link não fazia scroll
+  // até à seccao quando o utilizador já se encontrava na homepage.
+  const handleAnchorClick = (
+        e: React.MouseEvent<HTMLAnchorElement>,
+        href: string
+      ) => {
+            if (href.startsWith("/#") && window.location.pathname === "/") {
+                    const id = href.slice(2);
+                    const el = document.getElementById(id);
+                    if (el) {
+                              e.preventDefault();
+                              el.scrollIntoView({ behavior: "smooth", block: "start" });
+                              window.history.pushState(null, "", href);
+                    }
+            }
+      };
+
   return (
-    <>
-      <header className={cn("site-header", scrolled && "scrolled")}>
-        <div className="container flex w-full items-center justify-between">
-          <Link href="/" className="logo" onClick={() => setMenuOpen(false)}>
-            <b>DS</b>
-            <span>Projects</span>
-          </Link>
-
-          <nav className="nav-links hidden lg:flex items-center gap-[2.1rem]" aria-label="Navegação principal">
-            {mainNav.map((item) => (
-              <Link key={item.href} href={item.href as never}>
-                {item.label}
-              </Link>
-            ))}
-          </nav>
-
-          <div className="flex items-center gap-[2.2rem]">
-            <Link
-              href="/#contacto"
-              className="btn btn-dark hidden lg:inline-flex"
-              style={{ padding: ".8rem 1.6rem" }}
-            >
-              Estudo de Viabilidade
-            </Link>
-            <button
-              className="burger flex lg:hidden flex-col gap-[5px]"
-              aria-label={menuOpen ? "Fechar menu" : "Abrir menu"}
-              aria-expanded={menuOpen}
-              onClick={() => setMenuOpen((v) => !v)}
-            >
-              <span style={menuOpen ? { transform: "translateY(6px) rotate(45deg)" } : undefined} />
-              <span style={menuOpen ? { opacity: 0 } : undefined} />
-              <span style={menuOpen ? { transform: "translateY(-6px) rotate(-45deg)" } : undefined} />
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <div className={cn("mobile-menu", menuOpen && "open")} id="mobileMenu">
-        {mainNav.map((item) => (
-          <Link key={item.href} href={item.href as never} onClick={() => setMenuOpen(false)}>
-            {item.label}
-          </Link>
-        ))}
-        <Link href="/#contacto" className="btn btn-dark mt-8" onClick={() => setMenuOpen(false)}>
-          Estudo de Viabilidade
-        </Link>
-        <p className="mt-10 text-xs text-[#8d8d8f]">
-          {siteConfig.phoneDisplay} · {siteConfig.email}
-        </p>
-      </div>
-    </>
-  );
+        <>
+              <header className={cn("site-header", scrolled && "scrolled")}>
+                      <div className="container flex w-full items-center justify-between">
+                                <Link href="/" className="logo" onClick={() => setMenuOpen(false)}>
+                                            <b>DS</b>
+                                            <span>Projects</span>
+                                </Link>
+                      
+                                <nav className="nav-links hidden lg:flex items-center gap-[2.1rem]" aria-label="Navegação principal">
+                                  {mainNav.map((item) => (
+                        <Link
+                                          key={item.href}
+                                          href={item.href as never}
+                                          onClick={(e) => handleAnchorClick(e, item.href)}
+                                        >
+                          {item.label}
+                        </Link>
+                      ))}
+                                </nav>
+                      
+                                <div className="flex items-center gap-[2.2rem]">
+                                            <Link
+                                                            href="/#contacto"
+                                                            className="btn btn-dark hidden lg:inline-flex"
+                                                            style={{ padding: ".8rem 1.6rem" }}
+                                                            onClick={(e) => handleAnchorClick(e, "/#contacto")}
+                                                          >
+                                                          Estudo de Viabilidade
+                                            </Link>
+                                            <button
+                                                            className="burger flex lg:hidden flex-col gap-[5px]"
+                                                            aria-label={menuOpen ? "Fechar menu" : "Abrir menu"}
+                                                            aria-expanded={menuOpen}
+                                                            onClick={() => setMenuOpen((v) => !v)}
+                                                          >
+                                                          <span style={menuOpen ? { transform: "translateY(6px) rotate(45deg)" } : undefined} />
+                                                          <span style={menuOpen ? { opacity: 0 } : undefined} />
+                                                          <span style={menuOpen ? { transform: "translateY(-6px) rotate(-45deg)" } : undefined} />
+                                            </button>
+                                </div>
+                      </div>
+              </header>
+        
+              <div className={cn("mobile-menu", menuOpen && "open")} id="mobileMenu">
+                {mainNav.map((item) => (
+                    <Link
+                                  key={item.href}
+                                  href={item.href as never}
+                                  onClick={(e) => {
+                                                  setMenuOpen(false);
+                                                  handleAnchorClick(e, item.href);
+                                  }}
+                                >
+                      {item.label}
+                    </Link>
+                  ))}
+                      <Link
+                                  href="/#contacto"
+                                  className="btn btn-dark mt-8"
+                                  onClick={(e) => {
+                                                setMenuOpen(false);
+                                                handleAnchorClick(e, "/#contacto");
+                                  }}
+                                >
+                                Estudo de Viabilidade
+                      </Link>
+                      <p className="mt-10 text-xs text-[#8d8d8f]">
+                        {siteConfig.phoneDisplay} · {siteConfig.email}
+                      </p>
+              </div>
+        </>
+      );
 }
+</>
