@@ -20,12 +20,27 @@
   --paper:#f7f7f5;
   --white:#ffffff;
   --gold:#b08d57;
+  --gold-text:#8a6d38; /* variante de contraste AA para texto pequeno sobre fundo claro */
   --gold-soft:rgba(176,141,87,.35);
   --ease:cubic-bezier(.16,1,.3,1);
   --nav-h:88px;
 }
 
 html{scroll-behavior:smooth;}
+
+.skip-link{
+  position:absolute;top:-100px;left:1rem;z-index:2000;
+  background:var(--white);color:var(--black);padding:.9rem 1.4rem;
+  font-size:.85rem;font-weight:600;border-radius:2px;
+  transition:top .25s var(--ease);
+}
+.skip-link:focus{top:1rem;}
+
+/* Foco visível consistente em todos os elementos interativos (WCAG 2.4.7) */
+a:focus-visible, button:focus-visible, input:focus-visible,
+select:focus-visible, textarea:focus-visible, [tabindex]:focus-visible{
+  outline:2px solid var(--gold);outline-offset:3px;
+}
 body{
   background:var(--white);color:var(--ink);
   font-family:var(--font-inter),ui-sans-serif,system-ui,sans-serif;
@@ -35,10 +50,16 @@ body{
 
 .container{max-width:1360px;margin:0 auto;padding:0 6vw;}
 .eyebrow{
+  font-size:.72rem;letter-spacing:.28em;text-transform:uppercase;color:var(--graphite);
+  font-weight:600;margin-bottom:1.4rem;display:inline-flex;align-items:center;
+}
+.eyebrow::before{content:"";display:inline-block;width:28px;height:1px;background:var(--gold);margin-right:12px;}
+/* Variante para secções de fundo escuro (preto/grafite) — mantém AA (6.4:1) */
+.eyebrow-dark{
   font-size:.72rem;letter-spacing:.28em;text-transform:uppercase;color:var(--gold);
   font-weight:500;margin-bottom:1.4rem;display:inline-flex;align-items:center;
 }
-.eyebrow::before{content:"";display:inline-block;width:28px;height:1px;background:var(--gold);margin-right:12px;}
+.eyebrow-dark::before{content:"";display:inline-block;width:28px;height:1px;background:var(--gold);margin-right:12px;}
 
 .btn{
   display:inline-flex;align-items:center;gap:10px;padding:1.05rem 2.1rem;
@@ -99,6 +120,7 @@ header.site-header.scrolled{
 .ph .ph-label{font-size:.66rem;letter-spacing:.18em;text-transform:uppercase;color:var(--graphite-light);font-weight:500;position:relative;z-index:1;max-width:80%;}
 .ph.dark .ph-label{color:#a8a8a8;}
 .ph .ph-caption{font-size:.7rem;color:var(--gold);font-style:italic;font-family:var(--font-fraunces),serif;position:relative;z-index:1;}
+.ph.light .ph-caption{color:var(--gold-text);}
 
 /* ===== HERO ===== */
 .hero{position:relative;height:100vh;min-height:640px;display:flex;align-items:flex-end;overflow:hidden;background:var(--black);}
@@ -178,7 +200,7 @@ header.site-header.scrolled{
 .timeline-step::before{content:"";position:absolute;top:10px;left:0;right:2.4rem;height:1px;background:#d5d5d2;}
 .timeline-step:last-child::before{right:0;}
 .timeline-dot{width:11px;height:11px;border-radius:50%;background:var(--gold);margin-bottom:1.6rem;position:relative;z-index:1;}
-.timeline-step time{display:block;font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin-bottom:.6rem;}
+.timeline-step time{display:block;font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-text);margin-bottom:.6rem;}
 .timeline-step h4{font-family:var(--font-fraunces),serif;font-weight:500;font-size:1.1rem;margin-bottom:.6rem;}
 
 /* ===== FINAL CTA ===== */
@@ -196,7 +218,7 @@ header.site-header.scrolled{
 /* ===== SERVICE DETAIL / FORM ===== */
 .service-includes{margin-top:2.2rem;border-top:1px solid #dcdcd9;}
 .service-includes div{padding:1.1rem 0;border-bottom:1px solid #dcdcd9;display:flex;gap:1rem;font-size:.94rem;color:var(--graphite);}
-.service-includes div::before{content:"—";color:var(--gold);flex:none;}
+.service-includes div::before{content:"—";color:var(--gold-text);flex:none;}
 
 .field label{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--graphite);display:block;margin-bottom:.5rem;}
 .field input,.field select,.field textarea{

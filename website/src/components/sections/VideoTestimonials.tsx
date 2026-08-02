@@ -7,7 +7,7 @@ export function VideoTestimonials() {
     <section className="py-36 bg-black text-white" id="testemunhos">
       <div className="container">
         <Reveal className="max-w-[50ch] mb-16">
-          <div className="eyebrow">Testemunhos</div>
+          <div className="eyebrow-dark">Testemunhos</div>
           <h2 className="font-display font-normal text-[clamp(1.9rem,3.4vw,3rem)] leading-tight">
             Contado por quem viveu o processo.
           </h2>
@@ -33,7 +33,7 @@ export function VideoTestimonials() {
                       label="Testemunho em vídeo — a inserir"
                     />
                     <div className="play-btn">
-                      <svg viewBox="0 0 24 24" className="h-[18px] w-[18px] fill-white ml-[3px]">
+                      <svg viewBox="0 0 24 24" className="h-[18px] w-[18px] fill-white ml-[3px]" aria-hidden="true" focusable="false">
                         <path d="M8 5v14l11-7z" />
                       </svg>
                     </div>

@@ -23,7 +23,7 @@ export function Timeline() {
             <Reveal key={step.time} index={i} delayStep={0.08} className="timeline-step">
               <div className="timeline-dot" />
               <time>{step.time}</time>
-              <h4>{step.title}</h4>
+              <h3>{step.title}</h3>
               <p className="text-[.86rem] text-graphite font-light leading-relaxed">
                 {step.description}
               </p>

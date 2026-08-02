@@ -17,7 +17,7 @@ export function Services() {
           {services.map((service, i) => (
             <Reveal key={service.slug} index={i} delayStep={0.06}>
               <Link href={`/servicos/${service.slug}`} className="service-card block h-full">
-                <div className="service-num font-display text-gold text-[.95rem]">{service.num}</div>
+                <div className="service-num font-display text-[var(--gold-text)] text-[.95rem]">{service.num}</div>
                 <h3>{service.title}</h3>
                 <p>{service.subtitle}</p>
                 <span className="link-arrow">

@@ -24,10 +24,10 @@ export function Team() {
                   className="absolute inset-0"
                 />
               </div>
-              <h4 className="font-display font-medium text-[1.1rem]">
+              <h3 className="font-display font-medium text-[1.1rem]">
                 {member.name ?? "[Nome]"}
-              </h4>
-              <span className="text-[.78rem] text-gold tracking-wide">{member.role}</span>
+              </h3>
+              <span className="text-[.78rem] text-[var(--gold-text)] tracking-wide">{member.role}</span>
             </Reveal>
           ))}
         </div>

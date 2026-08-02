@@ -45,7 +45,7 @@ export function PlaceholderMedia({
 
   return (
     <div className={cn("ph", variant, className)}>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.2}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.2} aria-hidden="true" focusable="false">
         <rect x="3" y="5" width="18" height="14" rx="1" />
         <circle cx="9" cy="10" r="2" />
         <path d="M21 16l-5.5-4.5-4 4-3-2.2L3 17" />

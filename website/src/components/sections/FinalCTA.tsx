@@ -21,7 +21,7 @@ export function FinalCTA({
       </div>
 
       <Reveal className="container relative z-[1] max-w-[760px] mx-auto">
-        <div className="eyebrow justify-center flex">Comece Hoje</div>
+        <div className="eyebrow-dark justify-center flex">Comece Hoje</div>
         <h2>{heading}</h2>
         <p className="my-7 text-mist font-light text-[1.05rem]">{subtext}</p>
 

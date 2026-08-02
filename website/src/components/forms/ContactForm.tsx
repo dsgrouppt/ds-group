@@ -152,7 +152,7 @@ export function ContactForm({ formName = "Estudo de Viabilidade" }: { formName?:
       </label>
 
       {status === "error" && (
-        <p className="text-sm text-red-600 mt-4">{errorMessage}</p>
+        <p className="text-sm text-red-600 mt-4" role="alert">{errorMessage}</p>
       )}
 
       <button type="submit" className="btn btn-light mt-8 w-full sm:w-auto" disabled={status === "submitting"}>

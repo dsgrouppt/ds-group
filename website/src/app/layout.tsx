@@ -44,6 +44,12 @@ export const metadata: Metadata = {
   icons: {
     icon: "/favicon.svg",
   },
+  verification: {
+    // Preencher com o código fornecido pelo Google Search Console
+    // (Definições > Propriedade > Verificação > tag HTML) e definir
+    // NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION em produção. Ver docs/google-setup.md.
+    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || undefined,
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -58,12 +64,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <GoogleTagManagerNoscript />
+        <a href="#main-content" className="skip-link">
+          Saltar para o conteúdo principal
+        </a>
         <CustomCursor />
         <Header />
         <Suspense fallback={null}>
           <AnalyticsPageView />
         </Suspense>
-        <main>{children}</main>
+        <main id="main-content" tabIndex={-1}>
+          {children}
+        </main>
         <Footer />
         <GoogleTagManagerScript />
         <GoogleAnalyticsScript />

@@ -23,7 +23,7 @@ export function Method() {
           {steps.map((step, i) => (
             <Reveal key={step.num} index={i} delayStep={0.08}>
               <div className="method-item">
-                <div className="method-num font-display text-gold text-[1.1rem]">{step.num}</div>
+                <div className="method-num font-display text-[var(--gold-text)] text-[1.1rem]">{step.num}</div>
                 <h3>{step.title}</h3>
                 <p className="text-graphite font-light max-w-[52ch] text-[.98rem] leading-[1.75]">
                   {step.text}

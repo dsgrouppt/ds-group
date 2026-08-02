@@ -12,7 +12,7 @@ export function Videos() {
     <section className="py-36 bg-ink text-white" id="videos">
       <div className="container">
         <Reveal className="max-w-[50ch] mb-16">
-          <div className="eyebrow">Vídeos</div>
+          <div className="eyebrow-dark">Vídeos</div>
           <h2 className="font-display font-normal text-[clamp(1.9rem,3.4vw,3rem)] leading-tight text-white">
             O processo, filmado do princípio ao fim.
           </h2>
@@ -38,7 +38,7 @@ export function Videos() {
                       label="Vídeo real DS — a inserir"
                     />
                     <div className="play-btn">
-                      <svg viewBox="0 0 24 24" className="h-[18px] w-[18px] fill-white ml-[3px]">
+                      <svg viewBox="0 0 24 24" className="h-[18px] w-[18px] fill-white ml-[3px]" aria-hidden="true" focusable="false">
                         <path d="M8 5v14l11-7z" />
                       </svg>
                     </div>

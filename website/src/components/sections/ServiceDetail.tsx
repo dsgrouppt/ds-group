@@ -84,7 +84,7 @@ export function ServiceDetail({ service }: { service: Service }) {
             {related.map((s, i) => (
               <Reveal key={s.slug} index={i} delayStep={0.07}>
                 <Link href={`/servicos/${s.slug}`} className="service-card block h-full">
-                  <div className="service-num font-display text-gold text-[.95rem]">{s.num}</div>
+                  <div className="service-num font-display text-[var(--gold-text)] text-[.95rem]">{s.num}</div>
                   <h3>{s.title}</h3>
                   <p>{s.subtitle}</p>
                   <span className="link-arrow">
