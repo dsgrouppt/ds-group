@@ -1,0 +1,42 @@
+{
+  "$schema": "https://raw.githubusercontent.com/dsgrouppt/ds-group/main/brand/design-tokens.schema.json",
+  "description": "Tokens de marca DS Group / DS Projects. Fonte única de verdade para cor e tipografia — espelhado em website/tailwind.config.ts e website/src/app/globals.css. Qualquer alteração de marca deve começar aqui.",
+  "color": {
+    "black": { "value": "#0a0a0a", "usage": "Cor dominante, fundo, texto principal" },
+    "ink": { "value": "#111113", "usage": "Fundo escuro alternativo (secções)" },
+    "graphite": { "value": "#3a3a3c", "usage": "Texto secundário" },
+    "graphiteLight": { "value": "#6b6b6d", "usage": "Texto terciário, legendas" },
+    "mist": { "value": "#eeeeec", "usage": "Texto claro sobre fundo escuro" },
+    "mist2": { "value": "#e2e2df", "usage": "Divisores sobre fundo claro" },
+    "paper": { "value": "#f7f7f5", "usage": "Fundo claro alternativo" },
+    "white": { "value": "#ffffff", "usage": "Espaço negativo, contraste" },
+    "gold": { "value": "#b08d57", "usage": "Detalhe de assinatura — máx. 5% de qualquer aplicação visual, nunca em blocos de cor ou texto extenso" }
+  },
+  "typography": {
+    "display": {
+      "family": "Fraunces",
+      "fallback": "serif",
+      "usage": "Títulos, wordmark, assinatura editorial",
+      "weights": [300, 400, 500, 600],
+      "styles": ["normal", "italic"]
+    },
+    "body": {
+      "family": "Inter",
+      "fallback": "sans-serif",
+      "usage": "Corpo de texto, UI, documentos",
+      "weights": [300, 400, 500, 600]
+    }
+  },
+  "spacing": {
+    "gridUnitDigital": "8px",
+    "gridUnitPrint": "4mm",
+    "logoSafeArea": "altura da letra D da marca (mínimo)",
+    "logoMinSizeDigital": "24px",
+    "logoMinSizePrint": "10mm"
+  },
+  "motion": {
+    "ease": "cubic-bezier(.16,1,.3,1)",
+    "revealDuration": "0.9s",
+    "revealOffsetY": "36px"
+  }
+}
