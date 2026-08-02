@@ -30,11 +30,18 @@ ds-group/
 
 ## Estado do projeto (plano técnico do CTO)
 
-- [x] **Fase 1** — Repositório GitHub, estrutura do projeto, build sem erros
-- [ ] **Fase 2** — Deploy Vercel, domínio `dsprojects.pt`, HTTPS
-- [ ] **Fase 3** — Cloudflare (DNS, cache, segurança)
-- [ ] **Fase 4** — HubSpot Forms API em produção + teste de submissão real
-- [ ] **Fase 5** — Google Tag Manager, GA4, Meta Pixel, Search Console
+- [x] **Fase 1** — Website: bugs, SEO técnico, acessibilidade, segurança, performance (ver `docs/auditoria-fase1-website.md`)
+- [x] **Fase 2** — SEO: auditoria de 20 concorrentes, arquitetura SEO, Local SEO (8 cidades), Blog (6 artigos), FAQ (ver `docs/auditoria-concorrencia-seo.md` e `docs/arquitetura-seo.md`)
+- [ ] **Fase 3** — Google: GA4, GTM, Search Console, Google Business Profile, conversões
+- [ ] **Fase 4** — CRM interno (scaffold funcional)
+- [ ] **Fase 5** — Documentação técnica completa
+- [ ] **Fase 6** — Automações (estrutura completa)
+
+**Bloqueado por autenticação (aguarda o fundador):** `git push` para
+`github.com/dsgrouppt/ds-group` (sem credenciais no ambiente de execução),
+deploy Vercel + domínio `dsprojects.pt` + HTTPS, contas Google (GA4/GTM/
+Search Console/Business Profile), portal HubSpot. Todo o trabalho de
+preparação de código para estes passos está feito — falta apenas o login.
 
 Cada fase é fechada com commit próprio e aprovação antes de avançar — ver
 histórico de commits para o detalhe de cada uma.

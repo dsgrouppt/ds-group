@@ -27,7 +27,7 @@ export const siteConfig = {
   email: "geral@dsprojects.pt",
   phone: "+351000000000",
   phoneDisplay: "+351 000 000 000",
-  locations: ["Lisboa", "Porto"],
+  locations: ["Lisboa", "Porto", "Cascais", "Oeiras", "Sintra", "Vila Nova de Gaia", "Matosinhos", "Almada"],
 };
 
 export const services: Service[] = [
@@ -210,9 +210,9 @@ export const videoTestimonials: VideoTestimonial[] = [
 export const mainNav = [
   { label: "Serviços", href: "/#servicos" },
   { label: "Método", href: "/#metodo" },
-  { label: "Antes/Depois", href: "/#antes-depois" },
   { label: "Portefólio", href: "/portfolio" },
-  { label: "Equipa", href: "/#equipa" },
+  { label: "Blog", href: "/blog" },
+  { label: "FAQ", href: "/faq" },
   { label: "Contacto", href: "/#contacto" },
 ];
 

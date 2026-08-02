@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { services, siteConfig } from "@/lib/site-data";
+import { localAreas } from "@/lib/local-seo-data";
 
 export function Footer() {
   return (
     <footer className="bg-black text-mist pt-24 pb-10 border-t border-white/[.08]">
       <div className="container">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr] gap-12 pb-20">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[1.2fr_1fr_1fr_1fr_1fr] gap-12 pb-20">
           <div>
             <Link href="/" className="logo">
               <b>DS</b>
@@ -23,8 +24,20 @@ export function Footer() {
             <Link href="/#servicos">Serviços</Link>
             <Link href="/#metodo">Método</Link>
             <Link href="/portfolio">Portefólio</Link>
-            <Link href="/#equipa">Equipa</Link>
+            <Link href="/blog">Blog</Link>
+            <Link href="/faq">FAQ</Link>
             <Link href="/#contacto">Contacto</Link>
+          </div>
+
+          <div className="footer-col">
+            <h4 className="text-[.7rem] tracking-[.18em] uppercase text-[#8d8d8f] mb-6 font-medium">
+              Áreas de Atuação
+            </h4>
+            {localAreas.map((a) => (
+              <Link key={a.slug} href={`/remodelacoes/${a.slug}`}>
+                {a.name}
+              </Link>
+            ))}
           </div>
 
           <div className="footer-col">
