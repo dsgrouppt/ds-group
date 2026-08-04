@@ -2,12 +2,12 @@ name: CI — Website
 
 on:
   push:
-    branches: [main]
+    branches: [master]
     paths:
       - "website/**"
       - ".github/workflows/ci.yml"
   pull_request:
-    branches: [main]
+    branches: [master]
     paths:
       - "website/**"
 
