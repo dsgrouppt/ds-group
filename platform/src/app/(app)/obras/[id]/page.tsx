@@ -191,6 +191,7 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
             await deleteAttachment(id, revalidatePath, formData);
           }}
           canEdit={canEdit}
+          showPortalControls
         />
       </div>
     </div>

@@ -12,7 +12,7 @@ import { SubmitButton } from "@/components/ui/SubmitButton";
 import { ConfirmSubmitButton } from "@/components/ui/ConfirmButton";
 import { AttachmentPanel } from "@/components/AttachmentPanel";
 import { CLIENT_TYPE_LABEL, DEAL_STAGE_LABEL, PROJECT_STAGE_LABEL } from "@/lib/enums";
-import { updateClient, deleteClient } from "../actions";
+import { updateClient, deleteClient, activateClientPortal, deactivateClientPortal } from "../actions";
 import { uploadAttachment, deleteAttachment } from "@/lib/attachments-actions";
 
 export const dynamic = "force-dynamic";
@@ -155,6 +155,53 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
           </CardBody>
         </Card>
 
+        <Card>
+          <CardHeader>
+            <h2 className="font-display text-[1.1rem]">Portal do Cliente</h2>
+          </CardHeader>
+          <CardBody className="flex flex-col gap-4">
+            <div className="flex items-center gap-2">
+              <Badge tone={client.portalActive ? "success" : "neutral"}>
+                {client.portalActive ? "Acesso ativo" : "Acesso inativo"}
+              </Badge>
+              {client.lastLoginAt && (
+                <span className="text-xs text-graphite-light">
+                  Último acesso: {new Intl.DateTimeFormat("pt-PT", { day: "2-digit", month: "short", year: "numeric" }).format(client.lastLoginAt)}
+                </span>
+              )}
+            </div>
+
+            <p className="text-xs text-graphite-light">
+              O cliente entra em <code>/portal/login</code> com o email acima e a password definida aqui. Comunique a
+              password ao cliente por um canal já confiável — não é enviada automaticamente.
+            </p>
+
+            {canEdit ? (
+              <>
+                <form action={activateClientPortal.bind(null, client.id)} className="flex flex-col gap-3">
+                  <FieldGroup label={client.portalActive ? "Nova Password" : "Password de Acesso"} htmlFor="password">
+                    <Input id="password" name="password" type="password" minLength={8} required disabled={!client.email} />
+                  </FieldGroup>
+                  {!client.email && <p className="text-xs text-danger">Adicione um email ao cliente antes de ativar o portal.</p>}
+                  <SubmitButton variant="secondary">
+                    {client.portalActive ? "Redefinir Password" : "Ativar Acesso ao Portal"}
+                  </SubmitButton>
+                </form>
+
+                {client.portalActive && (
+                  <form action={deactivateClientPortal.bind(null, client.id)} className="pt-3 border-t border-mist-2">
+                    <ConfirmSubmitButton confirmMessage="Desativar o acesso deste cliente ao portal?">
+                      Desativar Acesso
+                    </ConfirmSubmitButton>
+                  </form>
+                )}
+              </>
+            ) : (
+              <p className="text-sm text-graphite-light">Sem permissão para gerir o acesso ao portal.</p>
+            )}
+          </CardBody>
+        </Card>
+
         <AttachmentPanel
           title="Documentos e Fotografias"
           attachments={client.attachments}
@@ -165,6 +212,7 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
             await deleteAttachment(id, revalidatePath, formData);
           }}
           canEdit={canEdit}
+          showPortalControls
         />
       </div>
     </div>

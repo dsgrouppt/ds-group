@@ -67,10 +67,21 @@ model Client {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // ── Portal do Cliente ──────────────────────────────────────────────
+  // Autenticação própria do cliente, independente do User (equipa) —
+  // ver src/lib/auth.ts (provider "cliente") e src/lib/client-session.ts.
+  // portalActive controla, por cliente, se o login está disponível: o
+  // gestor de projeto ativa isto manualmente (ver docs/pendencias-tecnicas.md
+  // — a definir: fluxo de convite/definição de password em Definições).
+  passwordHash String?
+  portalActive Boolean   @default(false)
+  lastLoginAt  DateTime?
+
   deals       Deal[]
   projects    Project[]
   tags        TagOnClient[]
   attachments Attachment[]
+  messages    ClientMessage[]
 
   @@index([type])
   @@index([createdAt])
@@ -151,6 +162,7 @@ model Project {
   events      CalendarEvent[]
   tags        TagOnProject[]
   attachments Attachment[]
+  messages    ClientMessage[]
 
   @@index([clientId])
   @@index([ownerId])
@@ -353,13 +365,20 @@ model ActivityLog {
 // Guardados em disco (ver src/lib/storage.ts) — path é relativo à pasta de
 // armazenamento configurada por STORAGE_DIR. Servidos apenas através de
 // /api/files/[id], que exige sessão válida (nunca em /public).
+// kind: "DOCUMENTO" | "FOTO_OBRA" | "RELATORIO" | "OUTRO" — determina em que
+// separador do Portal do Cliente (Documentos / Fotos / Relatórios) o ficheiro
+// aparece. visibleToClient é o interruptor de privacidade: por omissão
+// `false` — um ficheiro só aparece no portal depois de o gestor de projeto
+// o marcar explicitamente como visível (nunca automático).
 model Attachment {
-  id           String @id @default(cuid())
-  filename     String // nome gerado (único em disco)
-  originalName String // nome original do ficheiro enviado
-  mimeType     String
-  size         Int
-  path         String // caminho relativo dentro da pasta de armazenamento
+  id             String  @id @default(cuid())
+  filename       String // nome gerado (único em disco)
+  originalName   String // nome original do ficheiro enviado
+  mimeType       String
+  size           Int
+  path           String // caminho relativo dentro da pasta de armazenamento
+  kind           String  @default("OUTRO")
+  visibleToClient Boolean @default(false)
 
   client    Client?  @relation(fields: [clientId], references: [id], onDelete: Cascade)
   clientId  String?
@@ -375,6 +394,31 @@ model Attachment {
   @@index([clientId])
   @@index([projectId])
   @@index([taskId])
+  @@index([projectId, kind, visibleToClient])
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// MENSAGENS DO PORTAL DO CLIENTE
+// ─────────────────────────────────────────────────────────────────────────
+
+// authorType: "CLIENTE" | "EQUIPA" — thread simples por projeto, visível
+// tanto no Portal do Cliente como (a construir) num painel de mensagens
+// dentro do módulo Obras da equipa interna.
+model ClientMessage {
+  id         String   @id @default(cuid())
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId  String
+  client     Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId   String
+  authorType String
+  authorName String
+  body       String
+  readByTeam   Boolean @default(false)
+  readByClient Boolean @default(false)
+  createdAt  DateTime @default(now())
+
+  @@index([projectId])
+  @@index([clientId])
 }
 
 // ─────────────────────────────────────────────────────────────────────────

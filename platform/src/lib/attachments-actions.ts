@@ -12,8 +12,17 @@ interface UploadTarget {
   revalidate: string;
 }
 
+const ATTACHMENT_KINDS = ["DOCUMENTO", "FOTO_OBRA", "RELATORIO", "OUTRO"];
+
 export async function uploadAttachment(target: UploadTarget, formData: FormData) {
   const user = await requireUser();
+
+  const rawKind = formData.get("kind");
+  const kind = typeof rawKind === "string" && ATTACHMENT_KINDS.includes(rawKind) ? rawKind : "OUTRO";
+  // Checkbox HTML só envia o campo quando marcado — a sua ausência
+  // significa "não visível", que é o valor seguro por omissão (ver nota
+  // de privacidade no schema, modelo Attachment).
+  const visibleToClient = formData.get("visibleToClient") === "on";
 
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) {
@@ -38,6 +47,8 @@ export async function uploadAttachment(target: UploadTarget, formData: FormData)
       projectId: target.projectId,
       taskId: target.taskId,
       uploadedById: user.id,
+      kind,
+      visibleToClient,
     },
   });
 
