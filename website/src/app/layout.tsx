@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Fraunces, Inter } from "next/font/google";
 import { Suspense } from "react";
 import { Header } from "@/components/layout/Header";
@@ -41,8 +41,15 @@ export const metadata: Metadata = {
     description:
       "DS Projects gere remodelações completas do primeiro esboço à última chave — orçamento fechado, prazo contratual e reporte semanal. Uma empresa DS Group.",
   }),
+  manifest: "/site.webmanifest",
   icons: {
-    icon: "/favicon.svg",
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
   },
   verification: {
     // Preencher com o código fornecido pelo Google Search Console
@@ -50,6 +57,12 @@ export const metadata: Metadata = {
     // NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION em produção. Ver docs/google-setup.md.
     google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || undefined,
   },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#0a0a0a",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

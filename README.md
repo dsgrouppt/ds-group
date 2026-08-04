@@ -9,8 +9,9 @@ para o posicionamento e ADN da marca antes de alterar qualquer coisa aqui.
 ```
 ds-group/
 ├── website/          → Website institucional (Next.js 14, App Router, TS, Tailwind)
+├── platform/          → DS OS — plataforma interna de gestão (ERP+CRM: CRM, Obras, Clientes, Financeiro, Agenda, RH, Marketing)
 ├── landing-pages/     → Modelos de landing page para campanhas pagas
-├── crm/               → Especificação técnica do CRM (schema pronto para HubSpot)
+├── crm/               → Especificação técnica do CRM (schema pronto para HubSpot — fonte usada também pelo platform/)
 ├── docs/               → Documentação estratégica e operacional
 ├── brand/              → Brand Book, conceitos de logótipo, tokens de marca
 └── automations/         → Automações de CRM/marketing (workflows, sequências de email)
@@ -27,13 +28,14 @@ ds-group/
 | Criar uma landing page de campanha | [`landing-pages/README.md`](./landing-pages/README.md) |
 | Ver o plano de marketing e conteúdos | [`docs/estrategia-marketing.md`](./docs/estrategia-marketing.md) |
 | Ver todas as automações previstas | [`automations/README.md`](./automations/README.md) |
+| Correr a plataforma de gestão (DS OS) localmente | [`platform/README.md`](./platform/README.md) |
 
 ## Estado do projeto (plano técnico do CTO)
 
 - [x] **Fase 1** — Website: bugs, SEO técnico, acessibilidade, segurança, performance (ver `docs/auditoria-fase1-website.md`)
 - [x] **Fase 2** — SEO: auditoria de 20 concorrentes, arquitetura SEO, Local SEO (8 cidades), Blog (6 artigos), FAQ (ver `docs/auditoria-concorrencia-seo.md` e `docs/arquitetura-seo.md`)
 - [ ] **Fase 3** — Google: GA4, GTM, Search Console, Google Business Profile, conversões
-- [ ] **Fase 4** — CRM interno (scaffold funcional)
+- [x] **Fase 4** — Plataforma ERP+CRM interna (DS OS): arquitetura completa, auth+RBAC, gestão de utilizadores, CRUD completo em 7 módulos + Tarefas, upload de ficheiros, dashboard executivo, PostgreSQL pronto para produção (ver `docs/plataforma-arquitetura.md`, `docs/producao.md` e `platform/README.md`)
 - [ ] **Fase 5** — Documentação técnica completa
 - [ ] **Fase 6** — Automações (estrutura completa)
 

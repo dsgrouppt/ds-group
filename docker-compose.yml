@@ -1,0 +1,64 @@
+# Stack completa para deploy auto-hospedado (VPS/Hetzner). Não é necessária
+# em Vercel/Railway/Render — esses fornecedores usam os Dockerfiles
+# individuais ou o próprio buildpack, não este ficheiro. Ver
+# docs/manual-tecnico-operacoes.md para a comparação de hosting.
+#
+# Uso:
+#   cp .env.docker.example .env.docker   (preencher segredos reais)
+#   docker compose --env-file .env.docker up -d --build
+#
+# Um proxy reverso (Caddy, Nginx ou Traefik) com SSL automático deve ficar
+# à frente disto — não incluído aqui de propósito, porque a escolha depende
+# de decisões já tomadas no servidor (ex.: se já existir Nginx a servir
+# outras coisas no mesmo VPS).
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-dsuser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-ds_os}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-dsuser}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  platform:
+    build:
+      context: ./platform
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-dsuser}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ds_os}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:?defina NEXTAUTH_SECRET}
+      NEXTAUTH_URL: ${PLATFORM_URL:?defina PLATFORM_URL, ex. https://os.dsgroup.pt}
+    volumes:
+      - platform-uploads:/app/storage
+    ports:
+      - "3001:3001"
+
+  website:
+    build:
+      context: ./website
+      args:
+        NEXT_PUBLIC_SITE_URL: ${WEBSITE_URL:-https://www.dsprojects.pt}
+        NEXT_PUBLIC_GTM_ID: ${NEXT_PUBLIC_GTM_ID:-}
+        NEXT_PUBLIC_GA_ID: ${NEXT_PUBLIC_GA_ID:-}
+        NEXT_PUBLIC_META_PIXEL_ID: ${NEXT_PUBLIC_META_PIXEL_ID:-}
+    restart: unless-stopped
+    environment:
+      HUBSPOT_PORTAL_ID: ${HUBSPOT_PORTAL_ID:-}
+      HUBSPOT_FORM_GUID: ${HUBSPOT_FORM_GUID:-}
+    ports:
+      - "3000:3000"
+
+volumes:
+  postgres-data:
+  platform-uploads:

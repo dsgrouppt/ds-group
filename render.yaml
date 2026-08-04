@@ -1,0 +1,52 @@
+# Blueprint do Render — descreve os dois serviços + base de dados gerida.
+# Usar apenas se o Render for o fornecedor escolhido (ver comparação em
+# docs/manual-tecnico-operacoes.md). Não necessário para Vercel/Railway.
+
+databases:
+  - name: ds-os-db
+    plan: starter
+    databaseName: ds_os
+    user: dsuser
+
+services:
+  - type: web
+    name: ds-projects-website
+    runtime: docker
+    dockerfilePath: ./website/Dockerfile
+    dockerContext: ./website
+    plan: starter
+    healthCheckPath: /
+    envVars:
+      - key: NEXT_PUBLIC_SITE_URL
+        sync: false
+      - key: NEXT_PUBLIC_GTM_ID
+        sync: false
+      - key: NEXT_PUBLIC_GA_ID
+        sync: false
+      - key: NEXT_PUBLIC_META_PIXEL_ID
+        sync: false
+      - key: HUBSPOT_PORTAL_ID
+        sync: false
+      - key: HUBSPOT_FORM_GUID
+        sync: false
+
+  - type: web
+    name: ds-os-platform
+    runtime: docker
+    dockerfilePath: ./platform/Dockerfile
+    dockerContext: ./platform
+    plan: starter
+    healthCheckPath: /api/health
+    disk:
+      name: ds-os-uploads
+      mountPath: /app/storage
+      sizeGB: 5
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ds-os-db
+          property: connectionString
+      - key: NEXTAUTH_SECRET
+        generateValue: true
+      - key: NEXTAUTH_URL
+        sync: false

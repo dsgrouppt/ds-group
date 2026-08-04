@@ -1,0 +1,69 @@
+name: CI — Plataforma (DS OS)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "platform/**"
+      - ".github/workflows/ci-platform.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "platform/**"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: platform
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: dsuser
+          POSTGRES_PASSWORD: cipass
+          POSTGRES_DB: ds_os_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: "postgresql://dsuser:cipass@localhost:5432/ds_os_ci"
+      NEXTAUTH_SECRET: "ci-secret-nao-usar-em-producao"
+      NEXTAUTH_URL: "http://localhost:3001"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: platform/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prisma generate
+        run: npx prisma generate
+
+      - name: Validar schema
+        run: npx prisma validate
+
+      - name: Aplicar schema à base de dados de CI (smoke test real)
+        run: npx prisma db push
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Build (confirma que compila sem erros)
+        run: npm run build

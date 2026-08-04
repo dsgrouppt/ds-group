@@ -22,6 +22,12 @@ const ContentSecurityPolicy = `
 `.replace(/\s{2,}/g, " ").trim();
 
 const nextConfig = {
+  // NOTA: "output: standalone" foi deliberadamente removido daqui.
+  // O website vai para produção via Vercel — a Vercel tem o próprio
+  // pipeline de build otimizado para Next.js e a documentação oficial
+  // recomenda NÃO usar output "standalone" nesse caso (é para
+  // self-hosting via Docker/Node, cenário do website/Dockerfile,
+  // mantido para a alternativa VPS mas não usado no deploy Vercel).
   reactStrictMode: true,
   compress: true,
   poweredByHeader: false,
@@ -47,6 +53,22 @@ const nextConfig = {
           },
           { key: "Content-Security-Policy", value: ContentSecurityPolicy },
         ],
+      },
+    ];
+  },
+  async redirects() {
+    // Dominio canonico e www.dsprojects.pt (ver NEXT_PUBLIC_SITE_URL).
+    // O apex (dsprojects.pt) redireciona sempre para o www, 301 permanente,
+    // para evitar conteudo duplicado aos olhos do Google e garantir que o
+    // sitemap/canonical/OG batem sempre certo com o dominio realmente servido.
+    // Nota: isto so tem efeito depois de ambos os dominios (apex e www)
+    // estarem adicionados ao mesmo projeto Vercel -- passo manual no painel.
+    return [
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "dsprojects.pt" }],
+        destination: "https://www.dsprojects.pt/:path*",
+        permanent: true,
       },
     ];
   },

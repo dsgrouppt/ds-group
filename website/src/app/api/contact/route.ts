@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
+import { consume } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -21,6 +22,17 @@ function isValidEmail(email: string): boolean {
 }
 
 export async function POST(request: Request) {
+  // Limite de 5 submissões por IP a cada 10 minutos — protege o HubSpot
+  // (e o formulário) de submissões repetidas/automatizadas, sem exigir
+  // login (este endpoint é público por natureza).
+  const ip = headers().get("x-forwarded-for")?.split(",")[0]?.trim() || headers().get("x-real-ip") || "desconhecido";
+  if (!consume(`contact:${ip}`, 5, 10 * 60 * 1000)) {
+    return NextResponse.json(
+      { error: "Demasiados pedidos. Aguarde alguns minutos antes de tentar novamente." },
+      { status: 429 }
+    );
+  }
+
   let body: ContactPayload;
 
   try {

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { blogPosts } from "@/lib/blog-data";
 import { buildMetadata } from "@/lib/seo";
+import { formatLongDate } from "@/lib/utils";
 import { Reveal } from "@/components/ui/Reveal";
 
 export const metadata: Metadata = buildMetadata({
@@ -10,10 +11,6 @@ export const metadata: Metadata = buildMetadata({
     "Guias diretos sobre remodelação, gestão de obra e investimento imobiliário — escritos pela equipa DS Projects.",
   path: "/blog",
 });
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("pt-PT", { day: "2-digit", month: "long", year: "numeric" });
-}
 
 export default function BlogIndexPage() {
   const sorted = [...blogPosts].sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
@@ -41,7 +38,7 @@ export default function BlogIndexPage() {
                   <div className="flex items-center gap-4 text-[.75rem] tracking-[.14em] uppercase text-[var(--gold-text)] mb-4">
                     <span>{post.category}</span>
                     <span className="text-graphite/40">·</span>
-                    <span className="text-graphite/60 normal-case tracking-normal">{formatDate(post.publishedAt)}</span>
+                    <span className="text-graphite/60 normal-case tracking-normal">{formatLongDate(post.publishedAt)}</span>
                     <span className="text-graphite/40">·</span>
                     <span className="text-graphite/60 normal-case tracking-normal">{post.readTime}</span>
                   </div>

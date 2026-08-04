@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ServiceDetail } from "@/components/sections/ServiceDetail";
 import { services, getServiceBySlug, siteConfig } from "@/lib/site-data";
 import { buildMetadata, serviceJsonLd, breadcrumbJsonLd } from "@/lib/seo";
+import { JsonLd } from "@/components/JsonLd";
 
 interface ServicePageProps {
   params: { slug: string };
@@ -41,16 +42,7 @@ export default function ServicePage({ params }: ServicePageProps) {
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        // eslint-disable-next-line react/no-danger
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
-      <script
-        type="application/ld+json"
-        // eslint-disable-next-line react/no-danger
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }}
-      />
+      <JsonLd schemas={[jsonLd, breadcrumb]} />
       <ServiceDetail service={service} />
     </>
   );

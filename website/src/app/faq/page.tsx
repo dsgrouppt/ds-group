@@ -4,6 +4,7 @@ import { buildMetadata, faqJsonLd, breadcrumbJsonLd } from "@/lib/seo";
 import { siteConfig } from "@/lib/site-data";
 import { Reveal } from "@/components/ui/Reveal";
 import { FinalCTA } from "@/components/sections/FinalCTA";
+import { JsonLd } from "@/components/JsonLd";
 
 export const metadata: Metadata = buildMetadata({
   title: "Perguntas Frequentes",
@@ -22,16 +23,7 @@ export default function FaqPage() {
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        // eslint-disable-next-line react/no-danger
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
-      <script
-        type="application/ld+json"
-        // eslint-disable-next-line react/no-danger
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }}
-      />
+      <JsonLd schemas={[jsonLd, breadcrumb]} />
 
       <section className="hero inner">
         <div className="container hero-content">

@@ -8,6 +8,7 @@ import { Reveal } from "@/components/ui/Reveal";
 import { PlaceholderMedia } from "@/components/ui/PlaceholderMedia";
 import { ProjectsGrid } from "@/components/sections/ProjectsGrid";
 import { FinalCTA } from "@/components/sections/FinalCTA";
+import { JsonLd } from "@/components/JsonLd";
 
 interface LocalPageProps {
   params: { cidade: string };
@@ -50,16 +51,7 @@ export default function LocalAreaPage({ params }: LocalPageProps) {
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        // eslint-disable-next-line react/no-danger
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
-      <script
-        type="application/ld+json"
-        // eslint-disable-next-line react/no-danger
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }}
-      />
+      <JsonLd schemas={[jsonLd, breadcrumb]} />
 
       <section className="hero inner">
         <div className="hero-media">

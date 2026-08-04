@@ -1,0 +1,394 @@
+// DS OS — schema de base de dados.
+// Fonte de verdade para os módulos: Auth/Permissões, CRM, Obras, Clientes,
+// Financeiro, Agenda, RH e Marketing.
+//
+// Alinhado deliberadamente com os deliverables já existentes do CTO:
+// - docs/crm-especificacao.md (objetos, pipelines, tags, indicadores)
+// - crm/schema/contact-properties.json, deal-pipeline.json, deal-properties.json
+//
+// PostgreSQL — base de dados de produção. Os campos "categóricos" (estado,
+// tipo, origem, etc.) mantêm-se como String, com os valores permitidos e
+// validação centralizados em src/lib/enums.ts (TypeScript union types +
+// Zod). Isto foi uma decisão deliberada mesmo com Postgres a suportar
+// enums nativos: mudar um valor de enum nativo exige migração de schema;
+// mudar um valor aqui é só código de aplicação — mais ágil numa fase em
+// que os pipelines/estados ainda podem mudar por decisão de negócio.
+//
+// Desenvolvimento local sem Docker/conta externa: ver scripts/pg-dev.mjs
+// (Postgres local via `embedded-postgres`, mesma engine da produção).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// AUTENTICAÇÃO E PERMISSÕES
+// ─────────────────────────────────────────────────────────────────────────
+
+// Role: "ADMIN" | "DIRECAO" | "COMERCIAL" | "GESTOR_PROJETO" | "FINANCEIRO" | "RH" | "MARKETING"
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         String   @default("COMERCIAL")
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  employee      Employee?
+  dealsOwned    Deal[]        @relation("DealOwner")
+  projectsOwned Project[]     @relation("ProjectOwner")
+  tasksAssigned Task[]        @relation("TaskAssignee")
+  tasksCreated  Task[]        @relation("TaskCreator")
+  taskComments  TaskComment[]
+  attachments   Attachment[]
+  activityLogs  ActivityLog[]
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// CLIENTES
+// ─────────────────────────────────────────────────────────────────────────
+
+// type: "FAMILIA" | "INVESTIDOR" | "ARQUITETO_PARCEIRO"
+model Client {
+  id        String   @id @default(cuid())
+  name      String
+  email     String?
+  phone     String?
+  type      String   @default("FAMILIA")
+  location  String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  deals       Deal[]
+  projects    Project[]
+  tags        TagOnClient[]
+  attachments Attachment[]
+
+  @@index([type])
+  @@index([createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// CRM — LEADS / NEGÓCIOS (Pipeline Comercial)
+// ─────────────────────────────────────────────────────────────────────────
+
+// source: "GOOGLE_ADS" | "META_ADS" | "REFERENCIA" | "SEO_ORGANICO" | "GBP" | "OUTRO"
+// projectType: "RESIDENCIAL" | "MORADIA" | "COMERCIAL" | "INVESTIMENTO"
+// budgetRange: "R20_30K" | "R30_75K" | "R75_150K" | "R150K_PLUS"
+// stage (ver docs/crm-especificacao.md §4 — Pipeline Comercial):
+//   "NOVO_LEAD" | "QUALIFICADO" | "VISITA_AGENDADA" | "VISITA_REALIZADA" |
+//   "PROPOSTA_ENVIADA" | "EM_NEGOCIACAO" | "FECHADO_GANHO" | "FECHADO_PERDIDO"
+// lossReason: "PRECO" | "PRAZO" | "CONCORRENTE" | "ADIOU" | "SEM_RESPOSTA"
+model Deal {
+  id                String    @id @default(cuid())
+  title             String
+  client            Client    @relation(fields: [clientId], references: [id])
+  clientId          String
+  stage             String    @default("NOVO_LEAD")
+  source            String    @default("OUTRO")
+  projectType       String    @default("RESIDENCIAL")
+  budgetRange       String?
+  amount            Float?
+  marginEstimatePct Float?
+  visitaTecnicaAt   DateTime?
+  propostaEnviadaAt DateTime?
+  probability       Int       @default(5)
+  lossReason        String?
+  owner             User?     @relation("DealOwner", fields: [ownerId], references: [id])
+  ownerId           String?
+  notes             String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  project Project?
+  tags    TagOnDeal[]
+  tasks   Task[]
+
+  @@index([clientId])
+  @@index([ownerId])
+  @@index([stage])
+  @@index([source])
+  @@index([createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// OBRAS (Pipeline de Projeto, pós-fecho)
+// ─────────────────────────────────────────────────────────────────────────
+
+// stage (ver docs/crm-especificacao.md §4 — Pipeline de Projeto):
+//   "HANDOVER" | "KICKOFF_AGENDADO" | "PREPARACAO" | "EXECUCAO" |
+//   "CONTROLO_QUALIDADE" | "VISTORIA_CLIENTE" | "ENTREGUE" | "POS_OBRA_GARANTIA"
+model Project {
+  id           String    @id @default(cuid())
+  title        String
+  client       Client    @relation(fields: [clientId], references: [id])
+  clientId     String
+  deal         Deal?     @relation(fields: [dealId], references: [id])
+  dealId       String?   @unique
+  stage        String    @default("HANDOVER")
+  serviceType  String    @default("RESIDENCIAL")
+  location     String?
+  startDate    DateTime?
+  dueDate      DateTime?
+  deliveredAt  DateTime?
+  budgetAmount Float?
+  costAmount   Float?
+  owner        User?     @relation("ProjectOwner", fields: [ownerId], references: [id])
+  ownerId      String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  tasks       Task[]
+  invoices    Invoice[]
+  events      CalendarEvent[]
+  tags        TagOnProject[]
+  attachments Attachment[]
+
+  @@index([clientId])
+  @@index([ownerId])
+  @@index([stage])
+  @@index([createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// ETIQUETAS (Tags) — ver docs/crm-especificacao.md §5
+// ─────────────────────────────────────────────────────────────────────────
+
+model Tag {
+  id      String  @id @default(cuid())
+  name    String  @unique
+  meaning String?
+
+  clients  TagOnClient[]
+  deals    TagOnDeal[]
+  projects TagOnProject[]
+}
+
+model TagOnClient {
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId String
+  tag      Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  tagId    String
+
+  @@id([clientId, tagId])
+}
+
+model TagOnDeal {
+  deal   Deal   @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  dealId String
+  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  tagId  String
+
+  @@id([dealId, tagId])
+}
+
+model TagOnProject {
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String
+  tag       Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  tagId     String
+
+  @@id([projectId, tagId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// TAREFAS (transversal a CRM / Obras / RH)
+// ─────────────────────────────────────────────────────────────────────────
+
+// status: "PENDENTE" | "EM_CURSO" | "CONCLUIDA" | "CANCELADA"
+model Task {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  status      String    @default("PENDENTE")
+  priority    String    @default("NORMAL")
+  dueAt       DateTime?
+  assignee    User?     @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  assigneeId  String?
+  deal        Deal?     @relation(fields: [dealId], references: [id])
+  dealId      String?
+  project     Project?  @relation(fields: [projectId], references: [id])
+  projectId   String?
+  createdBy   User?     @relation("TaskCreator", fields: [createdById], references: [id])
+  createdById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  comments    TaskComment[]
+  attachments Attachment[]
+
+  @@index([assigneeId])
+  @@index([dealId])
+  @@index([projectId])
+  @@index([status])
+  @@index([dueAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// AGENDA
+// ─────────────────────────────────────────────────────────────────────────
+
+// type: "VISITA_TECNICA" | "REUNIAO" | "KICKOFF" | "VISTORIA" | "OUTRO"
+model CalendarEvent {
+  id        String    @id @default(cuid())
+  title     String
+  type      String    @default("OUTRO")
+  startAt   DateTime
+  endAt     DateTime?
+  location  String?
+  project   Project?  @relation(fields: [projectId], references: [id])
+  projectId String?
+  notes     String?
+  createdAt DateTime  @default(now())
+
+  @@index([projectId])
+  @@index([startAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// FINANCEIRO
+// ─────────────────────────────────────────────────────────────────────────
+
+// status: "EMITIDA" | "PAGA" | "ATRASADA" | "CANCELADA"
+model Invoice {
+  id        String    @id @default(cuid())
+  number    String    @unique
+  project   Project?  @relation(fields: [projectId], references: [id])
+  projectId String?
+  amount    Float
+  status    String    @default("EMITIDA")
+  issueDate DateTime  @default(now())
+  dueDate   DateTime?
+  paidAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  payments Payment[]
+
+  @@index([projectId])
+  @@index([status])
+}
+
+model Payment {
+  id        String   @id @default(cuid())
+  invoice   Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  invoiceId String
+  amount    Float
+  paidAt    DateTime @default(now())
+  method    String?
+
+  @@index([invoiceId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// RECURSOS HUMANOS
+// ─────────────────────────────────────────────────────────────────────────
+
+// status: "ATIVO" | "INATIVO" | "FERIAS"
+model Employee {
+  id         String    @id @default(cuid())
+  user       User?     @relation(fields: [userId], references: [id])
+  userId     String?   @unique
+  name       String
+  jobTitle   String
+  department String?
+  status     String    @default("ATIVO")
+  startDate  DateTime?
+  email      String?
+  phone      String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([status])
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// MARKETING
+// ─────────────────────────────────────────────────────────────────────────
+
+// channel: "GOOGLE_ADS" | "META_ADS" | "SEO" | "EMAIL" | "REFERRAL" | "OUTRO"
+model MarketingCampaign {
+  id        String    @id @default(cuid())
+  name      String
+  channel   String    @default("OUTRO")
+  budget    Float?
+  startDate DateTime?
+  endDate   DateTime?
+  active    Boolean   @default(true)
+  notes     String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// AUDITORIA
+// ─────────────────────────────────────────────────────────────────────────
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  user      User?    @relation(fields: [userId], references: [id])
+  userId    String?
+  action    String
+  entity    String
+  entityId  String?
+  meta      String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([entity, entityId])
+  @@index([createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// FICHEIROS (fotografias, documentos, contratos, PDFs)
+// ─────────────────────────────────────────────────────────────────────────
+
+// Guardados em disco (ver src/lib/storage.ts) — path é relativo à pasta de
+// armazenamento configurada por STORAGE_DIR. Servidos apenas através de
+// /api/files/[id], que exige sessão válida (nunca em /public).
+model Attachment {
+  id           String @id @default(cuid())
+  filename     String // nome gerado (único em disco)
+  originalName String // nome original do ficheiro enviado
+  mimeType     String
+  size         Int
+  path         String // caminho relativo dentro da pasta de armazenamento
+
+  client    Client?  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId  String?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String?
+  task      Task?    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  taskId    String?
+
+  uploadedBy   User?    @relation(fields: [uploadedById], references: [id])
+  uploadedById String?
+  createdAt    DateTime @default(now())
+
+  @@index([clientId])
+  @@index([projectId])
+  @@index([taskId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// COMENTÁRIOS DE TAREFAS
+// ─────────────────────────────────────────────────────────────────────────
+
+model TaskComment {
+  id        String   @id @default(cuid())
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  taskId    String
+  author    User?    @relation(fields: [authorId], references: [id])
+  authorId  String?
+  body      String
+  createdAt DateTime @default(now())
+
+  @@index([taskId])
+}

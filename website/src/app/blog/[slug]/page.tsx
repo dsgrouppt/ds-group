@@ -4,7 +4,9 @@ import { notFound } from "next/navigation";
 import { blogPosts, getBlogPostBySlug } from "@/lib/blog-data";
 import { buildMetadata, breadcrumbJsonLd, articleJsonLd } from "@/lib/seo";
 import { siteConfig } from "@/lib/site-data";
+import { formatLongDate } from "@/lib/utils";
 import { FinalCTA } from "@/components/sections/FinalCTA";
+import { JsonLd } from "@/components/JsonLd";
 
 interface BlogPostPageProps {
   params: { slug: string };
@@ -23,10 +25,6 @@ export function generateMetadata({ params }: BlogPostPageProps): Metadata {
     description: post.excerpt,
     path: `/blog/${post.slug}`,
   });
-}
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("pt-PT", { day: "2-digit", month: "long", year: "numeric" });
 }
 
 export default function BlogPostPage({ params }: BlogPostPageProps) {
@@ -50,23 +48,14 @@ export default function BlogPostPage({ params }: BlogPostPageProps) {
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        // eslint-disable-next-line react/no-danger
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
-      <script
-        type="application/ld+json"
-        // eslint-disable-next-line react/no-danger
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }}
-      />
+      <JsonLd schemas={[jsonLd, breadcrumb]} />
 
       <section className="pt-[calc(var(--header-h,88px)+7rem)] pb-20 bg-white">
         <div className="container max-w-[760px] mx-auto">
           <div className="flex items-center gap-4 text-[.75rem] tracking-[.14em] uppercase text-[var(--gold-text)] mb-6">
             <span>{post.category}</span>
             <span className="text-graphite/40">·</span>
-            <span className="text-graphite/60 normal-case tracking-normal">{formatDate(post.publishedAt)}</span>
+            <span className="text-graphite/60 normal-case tracking-normal">{formatLongDate(post.publishedAt)}</span>
             <span className="text-graphite/40">·</span>
             <span className="text-graphite/60 normal-case tracking-normal">{post.readTime}</span>
           </div>
