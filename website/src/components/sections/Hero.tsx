@@ -42,7 +42,7 @@ export function Hero() {
             quanto o processo.
           </p>
           <div className="flex items-center gap-9 mt-12 flex-wrap">
-            <Link href="/#contacto" className="btn btn-dark">
+            <Link href="/estudo-de-viabilidade" className="btn btn-dark">
               Pedir Estudo de Viabilidade
             </Link>
             <Link href="/#servicos" className="link-arrow text-white">

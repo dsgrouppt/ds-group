@@ -227,3 +227,55 @@ header.site-header.scrolled{
 }
 .field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--gold);}
 .honeypot{position:absolute;left:-9999px;top:-9999px;opacity:0;height:0;width:0;}
+
+/* ===== ESTUDO DE VIABILIDADE — WIZARD ===== */
+.wizard-shell{max-width:760px;margin:0 auto;}
+.wizard{background:var(--white);border:1px solid #e2e2df;padding:3rem 2.4rem;}
+@media (max-width:768px){ .wizard{padding:2.2rem 1.4rem;} }
+
+.wizard-progress{margin-bottom:2.8rem;}
+.wizard-progress-bar{height:2px;background:#e2e2df;position:relative;margin-bottom:1.6rem;}
+.wizard-progress-fill{position:absolute;top:0;left:0;height:100%;background:var(--gold);transition:width .5s var(--ease);}
+.wizard-steps-labels{display:flex;justify-content:space-between;gap:.4rem;flex-wrap:wrap;}
+.wizard-step-label{display:flex;flex-direction:column;gap:.3rem;font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:#b8b8b6;flex:1;min-width:64px;}
+.wizard-step-label em{font-style:normal;font-family:var(--font-fraunces),serif;font-size:.9rem;color:#c9c9c6;}
+.wizard-step-label.active{color:var(--ink);}
+.wizard-step-label.active em{color:var(--gold-text);}
+.wizard-step-label.done{color:var(--graphite);}
+.wizard-step-label.done em{color:var(--gold);}
+@media (max-width:640px){ .wizard-step-label span:not(em){display:none;} }
+
+.wizard-body{min-height:260px;}
+.wizard-step legend{padding:0;}
+
+.wizard-pill-group{display:flex;flex-wrap:wrap;gap:.7rem;}
+.wizard-pill{padding:.75rem 1.3rem;font-size:.82rem;border:1px solid #d5d5d2;background:transparent;color:var(--ink);border-radius:2px;cursor:pointer;transition:all .3s var(--ease);}
+.wizard-pill:hover{border-color:var(--black);}
+.wizard-pill.active{background:var(--black);border-color:var(--black);color:var(--white);}
+
+.wizard-checkbox-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:.9rem 1.4rem;}
+@media (max-width:640px){ .wizard-checkbox-grid{grid-template-columns:1fr;} }
+.wizard-checkbox{display:flex;align-items:flex-start;gap:.7rem;font-size:.9rem;color:var(--ink);font-weight:300;cursor:pointer;line-height:1.4;}
+.wizard-checkbox input{margin-top:3px;}
+
+.wizard-dropzone{border:1px dashed #c9c9c6;padding:2.6rem 1.5rem;text-align:center;cursor:pointer;transition:border-color .3s,background .3s;display:flex;flex-direction:column;gap:.5rem;}
+.wizard-dropzone:hover,.wizard-dropzone.active{border-color:var(--gold);background:var(--paper);}
+.wizard-dropzone-title{font-family:var(--font-fraunces),serif;font-size:1.05rem;}
+.wizard-dropzone-sub{font-size:.8rem;color:var(--graphite-light);}
+
+.wizard-file-list{list-style:none;padding:0;margin:1.4rem 0 0;display:flex;flex-direction:column;gap:.6rem;}
+.wizard-file-list li{display:flex;align-items:center;gap:.9rem;padding:.6rem .8rem;background:var(--paper);font-size:.82rem;}
+.wizard-file-list img{width:38px;height:38px;object-fit:cover;flex-shrink:0;}
+.wizard-file-icon{width:38px;height:38px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:var(--mist-2);font-size:.6rem;letter-spacing:.05em;color:var(--graphite);}
+.wizard-file-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--graphite);}
+.wizard-file-list button{background:none;border:none;color:var(--graphite-light);font-size:1.1rem;cursor:pointer;line-height:1;padding:.2rem .4rem;}
+.wizard-file-list button:hover{color:var(--black);}
+
+.wizard-summary{display:flex;flex-direction:column;border-top:1px solid #e2e2df;}
+.wizard-summary div{display:grid;grid-template-columns:160px 1fr;gap:1rem;padding:1rem 0;border-bottom:1px solid #e2e2df;}
+.wizard-summary dt{font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--graphite-light);}
+.wizard-summary dd{margin:0;font-size:.92rem;color:var(--ink);font-weight:300;}
+@media (max-width:640px){ .wizard-summary div{grid-template-columns:1fr;gap:.3rem;} }
+
+.wizard-nav{display:flex;justify-content:space-between;align-items:center;margin-top:2.8rem;padding-top:2rem;border-top:1px solid #e2e2df;}
+.wizard-success{background:var(--white);border:1px solid #e2e2df;padding:4rem 2.6rem;max-width:760px;margin:0 auto;text-align:left;}

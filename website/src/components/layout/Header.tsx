@@ -74,10 +74,9 @@ export function Header() {
                       
                                 <div className="flex items-center gap-[2.2rem]">
                                             <Link
-                                                            href="/#contacto"
+                                                            href="/estudo-de-viabilidade"
                                                             className="btn btn-dark hidden lg:inline-flex"
                                                             style={{ padding: ".8rem 1.6rem" }}
-                                                            onClick={(e) => handleAnchorClick(e, "/#contacto")}
                                                           >
                                                           Estudo de Viabilidade
                                             </Link>
@@ -109,12 +108,9 @@ export function Header() {
                     </Link>
                   ))}
                       <Link
-                                  href="/#contacto"
+                                  href="/estudo-de-viabilidade"
                                   className="btn btn-dark mt-8"
-                                  onClick={(e) => {
-                                                setMenuOpen(false);
-                                                handleAnchorClick(e, "/#contacto");
-                                  }}
+                                  onClick={() => setMenuOpen(false)}
                                 >
                                 Estudo de Viabilidade
                       </Link>

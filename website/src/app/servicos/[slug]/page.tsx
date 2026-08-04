@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ServiceDetail } from "@/components/sections/ServiceDetail";
 import { services, getServiceBySlug, siteConfig } from "@/lib/site-data";
-import { buildMetadata, serviceJsonLd, breadcrumbJsonLd } from "@/lib/seo";
+import { faqItems } from "@/lib/faq-data";
+import { buildMetadata, serviceJsonLd, breadcrumbJsonLd, faqJsonLd } from "@/lib/seo";
 import { JsonLd } from "@/components/JsonLd";
 
 interface ServicePageProps {
@@ -40,9 +41,16 @@ export default function ServicePage({ params }: ServicePageProps) {
     { name: service.title, url: `${siteConfig.url}/servicos/${service.slug}` },
   ]);
 
+  const faq = faqJsonLd(
+    faqItems
+      .filter((f) => f.category === "Processo" || f.category === "Prazos e Orçamento")
+      .slice(0, 4)
+      .map(({ question, answer }) => ({ question, answer }))
+  );
+
   return (
     <>
-      <JsonLd schemas={[jsonLd, breadcrumb]} />
+      <JsonLd schemas={[jsonLd, breadcrumb, faq]} />
       <ServiceDetail service={service} />
     </>
   );

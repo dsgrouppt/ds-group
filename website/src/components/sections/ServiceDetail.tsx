@@ -5,6 +5,7 @@ import { Reveal } from "@/components/ui/Reveal";
 import { PlaceholderMedia } from "@/components/ui/PlaceholderMedia";
 import { ProjectsGrid } from "@/components/sections/ProjectsGrid";
 import { FinalCTA } from "@/components/sections/FinalCTA";
+import { faqItems } from "@/lib/faq-data";
 
 export function ServiceDetail({ service }: { service: Service }) {
   const related = getRelatedServices(service.slug, 3);
@@ -93,6 +94,37 @@ export function ServiceDetail({ service }: { service: Service }) {
                 </Link>
               </Reveal>
             ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="py-24 pb-36 bg-white">
+        <div className="container max-w-[860px] mx-auto">
+          <div className="flex justify-between items-end gap-8 flex-wrap mb-14">
+            <h2 className="font-display font-normal text-[clamp(1.7rem,3vw,2.3rem)] leading-tight max-w-[18ch]">
+              Perguntas frequentes sobre {service.title.toLowerCase()}.
+            </h2>
+            <Link href="/faq" className="link-arrow">
+              <span className="bar" /> Ver todas as perguntas
+            </Link>
+          </div>
+          <div className="flex flex-col">
+            {faqItems
+              .filter((f) => f.category === "Processo" || f.category === "Prazos e Orçamento")
+              .slice(0, 4)
+              .map((item, i) => (
+                <Reveal
+                  key={item.question}
+                  index={i}
+                  delayStep={0.06}
+                  className="border-b border-black/[.08] py-7 first:pt-0 last:border-b-0"
+                >
+                  <h3 className="font-display font-normal text-[1.08rem] mb-3">{item.question}</h3>
+                  <p className="text-graphite font-light leading-[1.8] text-[.95rem] max-w-[64ch]">
+                    {item.answer}
+                  </p>
+                </Reveal>
+              ))}
           </div>
         </div>
       </section>

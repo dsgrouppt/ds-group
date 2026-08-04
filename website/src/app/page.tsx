@@ -10,6 +10,8 @@ import { Videos } from "@/components/sections/Videos";
 import { VideoTestimonials } from "@/components/sections/VideoTestimonials";
 import { Timeline } from "@/components/sections/Timeline";
 import { Team } from "@/components/sections/Team";
+import { Guarantees } from "@/components/sections/Guarantees";
+import { FaqPreview } from "@/components/sections/FaqPreview";
 import { FinalCTA } from "@/components/sections/FinalCTA";
 import { Reveal } from "@/components/ui/Reveal";
 import { LinkArrow } from "@/components/ui/LinkArrow";
@@ -53,6 +55,8 @@ export default function HomePage() {
       <VideoTestimonials />
       <Timeline />
       <Team />
+      <FaqPreview />
+      <Guarantees />
       <FinalCTA />
     </>
   );
