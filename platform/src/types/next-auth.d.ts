@@ -35,6 +35,9 @@ declare module "next-auth/jwt" {
     // de sessão revogada (utilizador desativado / cliente sem portal ativo)
     // — ver src/lib/auth.ts.
     checkedAt?: number;
+    // Timestamp fixado no momento do login, nunca atualizado depois — ver
+    // uso em src/lib/auth.ts (deteção de password trocada depois do login).
+    loginAt?: number;
     revoked?: boolean;
   }
 }

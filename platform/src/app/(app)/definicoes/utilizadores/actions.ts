@@ -99,7 +99,7 @@ export async function resetPassword(userId: string, formData: FormData) {
   const generatedPassword = crypto.randomBytes(9).toString("base64url");
   const passwordHash = await bcrypt.hash(generatedPassword, 12);
 
-  await prisma.user.update({ where: { id: userId }, data: { passwordHash } });
+  await prisma.user.update({ where: { id: userId }, data: { passwordHash, passwordChangedAt: new Date() } });
   await prisma.activityLog.create({ data: { userId: admin.id, action: "RESET_PASSWORD", entity: "User", entityId: userId } });
 
   revalidatePath(`/definicoes/utilizadores/${userId}`);

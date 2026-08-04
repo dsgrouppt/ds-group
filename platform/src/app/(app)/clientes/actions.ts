@@ -140,6 +140,22 @@ export async function activateClientPortal(clientId: string, formData: FormData)
     throw new Error("Este cliente não tem email registado — não é possível ativar o acesso ao portal sem um email para login.");
   }
 
+  // O login do portal identifica o cliente só pelo email (Client.email não
+  // é único na base de dados — dois registos podem partilhar o mesmo
+  // contacto de propósito, ex. duas obras da mesma família). Isso é
+  // inofensivo até os DOIS terem o portal ativo com o mesmo email: nesse
+  // caso o login deixaria de ser determinístico. Bloqueado aqui, na
+  // origem, em vez de só na autenticação.
+  const emailConflict = await prisma.client.findFirst({
+    where: { email: client.email, portalActive: true, id: { not: clientId } },
+    select: { id: true, name: true },
+  });
+  if (emailConflict) {
+    throw new Error(
+      `Já existe outro cliente ("${emailConflict.name}") com acesso ao portal ativo usando este mesmo email. Desative o acesso desse cliente primeiro, ou corrija o email antes de continuar.`
+    );
+  }
+
   const parsed = PortalPasswordSchema.safeParse({ password: formData.get("password") });
   if (!parsed.success) {
     throw new Error(parsed.error.issues[0]?.message ?? "Password inválida.");
@@ -149,7 +165,7 @@ export async function activateClientPortal(clientId: string, formData: FormData)
 
   await prisma.client.update({
     where: { id: clientId },
-    data: { passwordHash, portalActive: true },
+    data: { passwordHash, portalActive: true, passwordChangedAt: new Date() },
   });
 
   await prisma.activityLog.create({

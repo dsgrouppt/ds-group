@@ -134,6 +134,10 @@ export const authOptions: NextAuthOptions = {
         token.kind = authUser.kind;
         token.id = authUser.id;
         token.checkedAt = Date.now();
+        // Fixado uma única vez no login, nunca atualizado depois — é o
+        // ponto de referência usado abaixo para saber se a password foi
+        // trocada DEPOIS deste token ter sido emitido (ver `passwordChangedAt`).
+        token.loginAt = Date.now();
         token.revoked = false;
         if (authUser.kind === "STAFF") {
           token.role = authUser.role;
@@ -143,14 +147,21 @@ export const authOptions: NextAuthOptions = {
 
       const lastChecked = typeof token.checkedAt === "number" ? token.checkedAt : 0;
       if (Date.now() - lastChecked > REVALIDATE_INTERVAL_MS && token.id) {
+        const loginAt = typeof token.loginAt === "number" ? token.loginAt : 0;
+
         if (token.kind === "CLIENTE") {
           const current = await prisma.client.findUnique({
             where: { id: token.id as string },
-            select: { portalActive: true },
+            select: { portalActive: true, passwordChangedAt: true },
           });
 
-          if (!current || !current.portalActive) {
-            logger.warn("auth.portal_session_revoked", { clientId: token.id });
+          const passwordChangedAfterLogin = !!current?.passwordChangedAt && current.passwordChangedAt.getTime() > loginAt;
+
+          if (!current || !current.portalActive || passwordChangedAfterLogin) {
+            logger.warn("auth.portal_session_revoked", {
+              clientId: token.id,
+              reason: !current ? "not_found" : !current.portalActive ? "inactive" : "password_changed",
+            });
             token.revoked = true;
           } else {
             token.checkedAt = Date.now();
@@ -159,11 +170,16 @@ export const authOptions: NextAuthOptions = {
         } else {
           const current = await prisma.user.findUnique({
             where: { id: token.id as string },
-            select: { active: true, role: true },
+            select: { active: true, role: true, passwordChangedAt: true },
           });
 
-          if (!current || !current.active) {
-            logger.warn("auth.session_revoked", { userId: token.id });
+          const passwordChangedAfterLogin = !!current?.passwordChangedAt && current.passwordChangedAt.getTime() > loginAt;
+
+          if (!current || !current.active || passwordChangedAfterLogin) {
+            logger.warn("auth.session_revoked", {
+              userId: token.id,
+              reason: !current ? "not_found" : !current.active ? "inactive" : "password_changed",
+            });
             token.revoked = true;
           } else {
             token.role = current.role as RoleValue;

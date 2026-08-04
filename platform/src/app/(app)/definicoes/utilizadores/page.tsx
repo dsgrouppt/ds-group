@@ -9,13 +9,19 @@ import { FieldGroup, Input, Select } from "@/components/ui/Field";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { ROLE, ROLE_LABEL } from "@/lib/enums";
 import { createUser } from "./actions";
+import { Pagination, parsePage, PAGE_SIZE } from "@/components/ui/Pagination";
 
 export const dynamic = "force-dynamic";
 
-export default async function UtilizadoresPage() {
+export default async function UtilizadoresPage({ searchParams }: { searchParams?: { page?: string } }) {
   await requireModuleAccess("definicoes");
 
-  const users = await prisma.user.findMany({ orderBy: { createdAt: "asc" }, take: 500 });
+  const page = parsePage(searchParams);
+  const [users, totalCount] = await Promise.all([
+    prisma.user.findMany({ orderBy: { createdAt: "asc" }, skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE }),
+    prisma.user.count(),
+  ]);
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
   return (
     <div>
@@ -27,7 +33,7 @@ export default async function UtilizadoresPage() {
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 items-start">
         <Card>
           <CardHeader>
-            <h2 className="font-display text-[1.1rem]">{users.length} utilizador{users.length === 1 ? "" : "es"}</h2>
+            <h2 className="font-display text-[1.1rem]">{totalCount} utilizador{totalCount === 1 ? "" : "es"}</h2>
           </CardHeader>
           <CardBody className="p-0">
             <Table>
@@ -58,6 +64,7 @@ export default async function UtilizadoresPage() {
               </tbody>
             </Table>
           </CardBody>
+          <Pagination page={page} totalPages={totalPages} basePath="/definicoes/utilizadores" />
         </Card>
 
         <Card>

@@ -11,17 +11,21 @@ import { FieldGroup, Input, Select, Textarea } from "@/components/ui/Field";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { CAMPAIGN_CHANNEL, CAMPAIGN_CHANNEL_LABEL, LEAD_SOURCE_LABEL } from "@/lib/enums";
 import { createCampaign } from "./actions";
+import { Pagination, parsePage, PAGE_SIZE } from "@/components/ui/Pagination";
 
 export const dynamic = "force-dynamic";
 
-export default async function MarketingPage() {
+export default async function MarketingPage({ searchParams }: { searchParams?: { page?: string } }) {
   const user = await requireModuleAccess("marketing");
   const canEdit = can(user.role, "marketing", "edit");
 
-  const [campaigns, leadsBySource] = await Promise.all([
-    prisma.marketingCampaign.findMany({ orderBy: { createdAt: "desc" }, take: 200 }),
+  const page = parsePage(searchParams);
+  const [campaigns, totalCount, leadsBySource] = await Promise.all([
+    prisma.marketingCampaign.findMany({ orderBy: { createdAt: "desc" }, skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE }),
+    prisma.marketingCampaign.count(),
     prisma.deal.groupBy({ by: ["source"], _count: { source: true } }),
   ]);
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
   const totalLeads = leadsBySource.reduce((sum, row) => sum + row._count.source, 0);
 
@@ -59,7 +63,7 @@ export default async function MarketingPage() {
 
         <Card>
           <CardHeader>
-            <h2 className="font-display text-[1.1rem]">{campaigns.length} campanha{campaigns.length === 1 ? "" : "s"}</h2>
+            <h2 className="font-display text-[1.1rem]">{totalCount} campanha{totalCount === 1 ? "" : "s"}</h2>
           </CardHeader>
           <CardBody className="p-0">
             {campaigns.length === 0 ? (
@@ -91,6 +95,7 @@ export default async function MarketingPage() {
               </Table>
             )}
           </CardBody>
+          <Pagination page={page} totalPages={totalPages} basePath="/marketing" />
         </Card>
       </div>
 

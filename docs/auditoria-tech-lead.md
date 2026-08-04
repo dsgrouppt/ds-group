@@ -61,3 +61,5 @@ Tudo testado com `npm run build` (24 rotas, zero erros) e um smoke test HTTP rea
 ---
 
 Todas as alterações foram commitadas e estão nos ficheiros da pasta partilhada (`docs/producao.md`, secção 7, tem o detalhe técnico completo).
+
+**Nota de continuidade**: a recomendação "paginação nas restantes listagens" foi implementada numa passagem posterior, junto com outras correções (revogação de sessão ao mudar password, alteração de password pelo próprio, correção de um bug real em Tarefas/Agenda) — ver `docs/producao.md`, secção 8.

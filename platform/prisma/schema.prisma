@@ -32,14 +32,21 @@ datasource db {
 
 // Role: "ADMIN" | "DIRECAO" | "COMERCIAL" | "GESTOR_PROJETO" | "FINANCEIRO" | "RH" | "MARKETING"
 model User {
-  id           String   @id @default(cuid())
+  id           String    @id @default(cuid())
   name         String
-  email        String   @unique
+  email        String    @unique
   passwordHash String
-  role         String   @default("COMERCIAL")
-  active       Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  // Marcado sempre que a password muda (reposição por um admin ou
+  // alteração pelo próprio em "O Meu Perfil") — usado por auth.ts para
+  // revogar imediatamente sessões já emitidas antes da mudança, em vez de
+  // esperar a expiração natural do token (até 8h). Sem isto, repor a
+  // password de uma conta comprometida bloqueava novos logins mas não
+  // terminava uma sessão já aberta por um atacante.
+  passwordChangedAt DateTime?
+  role         String    @default("COMERCIAL")
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   employee      Employee?
   dealsOwned    Deal[]        @relation("DealOwner")
@@ -74,6 +81,9 @@ model Client {
   // gestor de projeto ativa isto manualmente (ver docs/pendencias-tecnicas.md
   // — a definir: fluxo de convite/definição de password em Definições).
   passwordHash String?
+  // Ver o mesmo campo em User — mesma finalidade de revogação imediata de
+  // sessão, aplicada ao Portal do Cliente.
+  passwordChangedAt DateTime?
   portalActive Boolean   @default(false)
   lastLoginAt  DateTime?
 

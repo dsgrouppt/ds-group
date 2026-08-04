@@ -94,6 +94,8 @@ function LoginForm() {
 
         <p className="text-center text-xs text-graphite-light mt-6">
           Acesso restrito à equipa DS Group.
+          <br />
+          Esqueceu-se da password? Peça a um administrador para a repor em Definições.
         </p>
       </div>
     </div>

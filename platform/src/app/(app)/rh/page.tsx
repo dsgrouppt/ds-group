@@ -11,14 +11,20 @@ import { FieldGroup, Input, Select } from "@/components/ui/Field";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { EMPLOYEE_STATUS, EMPLOYEE_STATUS_LABEL } from "@/lib/enums";
 import { createEmployee } from "./actions";
+import { Pagination, parsePage, PAGE_SIZE } from "@/components/ui/Pagination";
 
 export const dynamic = "force-dynamic";
 
-export default async function RhPage() {
+export default async function RhPage({ searchParams }: { searchParams?: { page?: string } }) {
   const user = await requireModuleAccess("rh");
   const canEdit = can(user.role, "rh", "edit");
 
-  const employees = await prisma.employee.findMany({ orderBy: { createdAt: "desc" }, take: 200 });
+  const page = parsePage(searchParams);
+  const [employees, totalCount] = await Promise.all([
+    prisma.employee.findMany({ orderBy: { createdAt: "desc" }, skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE }),
+    prisma.employee.count(),
+  ]);
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
   return (
     <div>
@@ -27,7 +33,7 @@ export default async function RhPage() {
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 items-start">
         <Card>
           <CardHeader>
-            <h2 className="font-display text-[1.1rem]">{employees.length} colaborador{employees.length === 1 ? "" : "es"}</h2>
+            <h2 className="font-display text-[1.1rem]">{totalCount} colaborador{totalCount === 1 ? "" : "es"}</h2>
           </CardHeader>
           <CardBody className="p-0">
             {employees.length === 0 ? (
@@ -64,6 +70,7 @@ export default async function RhPage() {
               </Table>
             )}
           </CardBody>
+          <Pagination page={page} totalPages={totalPages} basePath="/rh" />
         </Card>
 
         {canEdit && (

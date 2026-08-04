@@ -43,10 +43,16 @@ export function AppShell({ allowed, user, children }: AppShellProps) {
           </div>
 
           <div className="flex items-center gap-4">
-            <div className="text-right hidden sm:block">
+            <Link href="/perfil" className="text-right hidden sm:block hover:opacity-70 transition-opacity">
               <div className="text-sm font-medium leading-tight">{user.name ?? user.email}</div>
               <div className="text-xs text-graphite-light leading-tight">{ROLE_LABEL[user.role]}</div>
-            </div>
+            </Link>
+            <Link
+              href="/perfil"
+              className="text-xs font-medium text-graphite-light hover:text-ink border border-mist-2 rounded-md px-3 py-1.5 transition-colors hidden sm:inline-block"
+            >
+              Perfil
+            </Link>
             <button
               onClick={() => signOut({ callbackUrl: "/login" })}
               className="text-xs font-medium text-graphite-light hover:text-ink border border-mist-2 rounded-md px-3 py-1.5 transition-colors"
@@ -63,6 +69,13 @@ export function AppShell({ allowed, user, children }: AppShellProps) {
                 {item.label}
               </Link>
             ))}
+            <Link
+              href="/perfil"
+              onClick={() => setMobileOpen(false)}
+              className="px-3 py-2.5 rounded-md text-sm text-[#d5d5d6] hover:bg-white/[.08] mt-2 border-t border-white/10 pt-4"
+            >
+              O Meu Perfil
+            </Link>
           </nav>
         )}
 

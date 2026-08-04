@@ -62,13 +62,21 @@ export function PortalShell({
           ))}
         </nav>
         <div className="px-7 py-6 border-t border-white/10">
-          <div className="text-sm text-white leading-tight">{client.name ?? client.email}</div>
-          <button
-            onClick={() => signOut({ callbackUrl: "/portal/login" })}
-            className="text-xs text-[#8a8a8c] hover:text-white mt-2 transition-colors"
-          >
-            Terminar sessão
-          </button>
+          <Link href="/portal/conta" className="text-sm text-white leading-tight hover:opacity-70 transition-opacity">
+            {client.name ?? client.email}
+          </Link>
+          <div className="flex items-center gap-3 mt-2">
+            <Link href="/portal/conta" className="text-xs text-[#8a8a8c] hover:text-white transition-colors">
+              A minha conta
+            </Link>
+            <span className="text-[#4a4a4c]">·</span>
+            <button
+              onClick={() => signOut({ callbackUrl: "/portal/login" })}
+              className="text-xs text-[#8a8a8c] hover:text-white transition-colors"
+            >
+              Terminar sessão
+            </button>
+          </div>
         </div>
       </aside>
 
@@ -95,9 +103,16 @@ export function PortalShell({
                 {item.label}
               </Link>
             ))}
+            <Link
+              href="/portal/conta"
+              onClick={() => setMobileOpen(false)}
+              className="px-3 py-2.5 rounded-md text-sm text-[#d5d5d6] hover:bg-white/[.08] mt-2 border-t border-white/10 pt-4"
+            >
+              A minha conta
+            </Link>
             <button
               onClick={() => signOut({ callbackUrl: "/portal/login" })}
-              className="text-left px-3 py-2.5 rounded-md text-sm text-[#d5d5d6] hover:bg-white/[.08] mt-2 border-t border-white/10 pt-4"
+              className="text-left px-3 py-2.5 rounded-md text-sm text-[#d5d5d6] hover:bg-white/[.08]"
             >
               Terminar sessão
             </button>

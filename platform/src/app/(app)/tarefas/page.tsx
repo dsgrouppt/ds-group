@@ -25,19 +25,30 @@ export default async function TarefasPage() {
   const user = await requireModuleAccess("tarefas");
   const canEdit = can(user.role, "tarefas", "edit");
 
-  const [tasks, users, deals, projects] = await Promise.all([
+  // Duas queries separadas em vez de uma só filtrada em memória — com uma
+  // única query ordenada por `status` e limitada a N linhas, tarefas
+  // concluídas/canceladas antigas (que ordenam antes, alfabeticamente)
+  // podiam encher o limite e fazer tarefas ativas desaparecerem da lista
+  // assim que o total de tarefas da empresa ultrapassasse esse limite —
+  // exatamente o cenário mais provável ao fim de alguns meses de uso real.
+  const [pending, doneCount, done, users, deals, projects] = await Promise.all([
     prisma.task.findMany({
-      orderBy: [{ status: "asc" }, { dueAt: "asc" }],
+      where: { status: { notIn: ["CONCLUIDA", "CANCELADA"] } },
+      orderBy: { dueAt: "asc" },
       include: { assignee: { select: { name: true } }, deal: { select: { title: true } }, project: { select: { title: true } } },
-      take: 300,
+      take: 500,
+    }),
+    prisma.task.count({ where: { status: { in: ["CONCLUIDA", "CANCELADA"] } } }),
+    prisma.task.findMany({
+      where: { status: { in: ["CONCLUIDA", "CANCELADA"] } },
+      orderBy: { updatedAt: "desc" },
+      include: { assignee: { select: { name: true } }, deal: { select: { title: true } }, project: { select: { title: true } } },
+      take: 100,
     }),
     prisma.user.findMany({ where: { active: true }, orderBy: { name: "asc" }, select: { id: true, name: true }, take: 500 }),
     prisma.deal.findMany({ orderBy: { title: "asc" }, select: { id: true, title: true }, take: 500 }),
     prisma.project.findMany({ orderBy: { title: "asc" }, select: { id: true, title: true }, take: 500 }),
   ]);
-
-  const pending = tasks.filter((t) => t.status !== "CONCLUIDA" && t.status !== "CANCELADA");
-  const done = tasks.filter((t) => t.status === "CONCLUIDA" || t.status === "CANCELADA");
 
   return (
     <div>
@@ -99,7 +110,9 @@ export default async function TarefasPage() {
           {done.length > 0 && (
             <Card>
               <CardHeader>
-                <h2 className="font-display text-[1.1rem]">Concluídas / Canceladas ({done.length})</h2>
+                <h2 className="font-display text-[1.1rem]">
+                  Concluídas / Canceladas ({doneCount}){doneCount > done.length ? ` — a mostrar as ${done.length} mais recentes` : ""}
+                </h2>
               </CardHeader>
               <CardBody className="p-0">
                 <ul className="divide-y divide-mist-2">

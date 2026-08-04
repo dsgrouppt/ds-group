@@ -54,7 +54,7 @@ async function main() {
   console.log(` Email:        ${adminEmail}`);
   console.log(` Palavra-passe: ${generatedPassword}`);
   console.log(" Guarde esta password agora — não voltará a ser mostrada.");
-  console.log(" Recomenda-se trocá-la assim que houver ecrã de perfil (Fase seguinte).");
+  console.log(" Pode ser alterada em qualquer altura em O Meu Perfil, já dentro da plataforma.");
   console.log("============================================================\n");
 }
 

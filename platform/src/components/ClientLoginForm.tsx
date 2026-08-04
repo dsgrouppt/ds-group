@@ -95,7 +95,7 @@ function ClientLoginForm() {
         <p className="text-center text-xs text-graphite-light mt-6">
           Acesso reservado a clientes DS Projects com portal ativado.
           <br />
-          Ainda não tem acesso?{" "}
+          Ainda não tem acesso, ou esqueceu-se da password?{" "}
           <a href="mailto:geral@dsprojects.pt" className="underline hover:text-graphite">
             Contacte a sua equipa de projeto
           </a>

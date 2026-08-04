@@ -18,18 +18,28 @@ export default async function AgendaPage() {
   const user = await requireModuleAccess("agenda");
   const canEdit = can(user.role, "agenda", "edit");
 
-  const [events, projects] = await Promise.all([
+  // Duas queries separadas, não uma só filtrada em memória — com uma
+  // única query ordenada por `startAt` (crescente) e limitada a N linhas,
+  // eventos passados antigos (que ordenam sempre primeiro) podiam encher o
+  // limite e fazer eventos futuros desaparecerem da lista assim que o
+  // total de eventos alguma vez criados ultrapassasse esse limite.
+  const now = new Date();
+  const [upcoming, pastCount, past, projects] = await Promise.all([
     prisma.calendarEvent.findMany({
+      where: { startAt: { gte: now } },
       orderBy: { startAt: "asc" },
       include: { project: { select: { title: true } } },
-      take: 300,
+      take: 500,
+    }),
+    prisma.calendarEvent.count({ where: { startAt: { lt: now } } }),
+    prisma.calendarEvent.findMany({
+      where: { startAt: { lt: now } },
+      orderBy: { startAt: "desc" },
+      include: { project: { select: { title: true } } },
+      take: 100,
     }),
     prisma.project.findMany({ orderBy: { title: "asc" }, select: { id: true, title: true }, take: 500 }),
   ]);
-
-  const now = new Date();
-  const upcoming = events.filter((e) => e.startAt >= now);
-  const past = events.filter((e) => e.startAt < now);
 
   return (
     <div>
@@ -80,7 +90,9 @@ export default async function AgendaPage() {
           {past.length > 0 && (
             <Card>
               <CardHeader>
-                <h2 className="font-display text-[1.1rem]">Anteriores ({past.length})</h2>
+                <h2 className="font-display text-[1.1rem]">
+                  Anteriores ({pastCount}){pastCount > past.length ? ` — a mostrar os ${past.length} mais recentes` : ""}
+                </h2>
               </CardHeader>
               <CardBody className="p-0">
                 <Table>

@@ -13,23 +13,28 @@ import { FieldGroup, Input, Select } from "@/components/ui/Field";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { INVOICE_STATUS, INVOICE_STATUS_LABEL } from "@/lib/enums";
 import { createInvoice } from "./actions";
+import { Pagination, parsePage, PAGE_SIZE } from "@/components/ui/Pagination";
 
 export const dynamic = "force-dynamic";
 
-export default async function FinanceiroPage() {
+export default async function FinanceiroPage({ searchParams }: { searchParams?: { page?: string } }) {
   const user = await requireModuleAccess("financeiro");
   const canEdit = can(user.role, "financeiro", "edit");
 
-  const [invoices, projects, paidAgg, overdueAgg] = await Promise.all([
+  const page = parsePage(searchParams);
+  const [invoices, totalCount, projects, paidAgg, overdueAgg] = await Promise.all([
     prisma.invoice.findMany({
       orderBy: { issueDate: "desc" },
       include: { project: { select: { title: true } } },
-      take: 200,
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
     }),
+    prisma.invoice.count(),
     prisma.project.findMany({ orderBy: { title: "asc" }, select: { id: true, title: true }, take: 500 }),
     prisma.invoice.aggregate({ where: { status: "PAGA" }, _sum: { amount: true } }),
     prisma.invoice.aggregate({ where: { status: "ATRASADA" }, _sum: { amount: true } }),
   ]);
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
   return (
     <div>
@@ -39,7 +44,7 @@ export default async function FinanceiroPage() {
       />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard label="Faturas" value={invoices.length} />
+        <StatCard label="Faturas" value={totalCount} />
         <StatCard label="Total Pago" value={paidAgg._sum.amount ? formatEuro(paidAgg._sum.amount) : null} />
         <StatCard label="Em Atraso" value={overdueAgg._sum.amount ? formatEuro(overdueAgg._sum.amount) : null} />
         <StatCard label="Margem Bruta Média" value={null} hint="Requer custos de obra (Fase seguinte)" />
@@ -48,7 +53,7 @@ export default async function FinanceiroPage() {
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 items-start">
         <Card>
           <CardHeader>
-            <h2 className="font-display text-[1.1rem]">{invoices.length} fatura{invoices.length === 1 ? "" : "s"}</h2>
+            <h2 className="font-display text-[1.1rem]">{totalCount} fatura{totalCount === 1 ? "" : "s"}</h2>
           </CardHeader>
           <CardBody className="p-0">
             {invoices.length === 0 ? (
@@ -92,6 +97,7 @@ export default async function FinanceiroPage() {
               </Table>
             )}
           </CardBody>
+          <Pagination page={page} totalPages={totalPages} basePath="/financeiro" />
         </Card>
 
         {canEdit && (

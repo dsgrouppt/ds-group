@@ -202,11 +202,73 @@ real (`X-Frame-Options`, HSTS, CSP, `X-Content-Type-Options`).
   runtime edge, não pode chamar Prisma diretamente). Numa conta desativada,
   o utilizador continua a passar pelo middleware até tocar numa página que
   chame `requireUser()` — na prática, quase sempre a primeira página.
-- **Paginação nas restantes listagens**: Tarefas, Financeiro, Agenda, RH e
-  Marketing têm hoje um limite de segurança (`take`), mas não paginação
-  real com UI de "Anterior/Seguinte" — suficiente para o volume atual,
-  a revisitar se algum destes módulos crescer para milhares de registos.
 - **Antivírus/scanning de malware nos uploads**: a verificação de magic
   bytes impede ficheiros com tipo declarado errado, mas não substitui um
   scanner de malware real (ex.: ClamAV) — recomendado antes de aceitar
   uploads de fontes não totalmente confiáveis.
+
+## 8. Auditoria de continuidade — véspera de produção (2026)
+
+Segunda passagem, focada especificamente em "o que ainda impede o
+primeiro uso real": tudo o que tinha correção seguindo os padrões já
+estabelecidos no código foi corrigido diretamente; o resto ficou
+documentado como decisão de infraestrutura (secções 1–3, inalteradas).
+
+### Corrigido
+
+- **Bug real de dados a desaparecer (Tarefas e Agenda)**: as duas
+  páginas buscavam todos os registos numa única query ordenada
+  (`status` ou `startAt` crescente) e só depois separavam "ativas" de
+  "concluídas" (ou "próximas" de "anteriores") em memória, com um limite
+  de segurança (`take`) aplicado à query ainda não separada. Na prática,
+  isto significa que assim que o número de tarefas concluídas/canceladas
+  (ou eventos passados) acumulados ultrapassasse esse limite, tarefas
+  ativas e eventos futuros podiam deixar de aparecer na lista — não por
+  estarem "cortados no fim", mas porque o próprio registo ativo nunca
+  chegava a entrar no resultado da query. Corrigido para duas queries
+  independentes (ativas/concluídas, futuras/passadas), cada uma com o
+  seu próprio limite e ordenação — o mesmo padrão robusto já usado no
+  Dashboard.
+- **Paginação real** adicionada a RH, Financeiro, Marketing e
+  Definições > Utilizadores — a recomendação deixada em aberto na
+  auditoria anterior (secção 7) foi implementada, usando o mesmo
+  componente `Pagination` já validado em Clientes/CRM/Obras.
+- **Alteração de password pelo próprio utilizador** (`/perfil` para a
+  equipa, `/portal/conta` para clientes do Portal): antes, só um ADMIN
+  conseguia repor a password de alguém (em Definições, módulo a que só
+  ADMIN tem acesso) — todos os outros perfis (Direção, Comercial, Gestor
+  de Projeto, Financeiro, RH, Marketing) e todos os clientes do portal
+  não tinham nenhuma forma de trocar a sua própria password.
+- **Revogação imediata de sessão ao mudar password**: adicionado
+  `passwordChangedAt` a `User` e `Client`, comparado no callback `jwt`
+  contra o momento de login do token (`loginAt`, fixado uma única vez).
+  Antes, repor a password de uma conta comprometida bloqueava novos
+  logins mas não terminava uma sessão já aberta (só expirava
+  naturalmente, até 8h depois) — agora essa sessão é revogada no ciclo
+  de revalidação seguinte (até 60s), igual ao tratamento já existente
+  para contas desativadas.
+- **Conflito de email no Portal do Cliente**: `Client.email` não é único
+  na base de dados (dois registos podem partilhar contacto de propósito).
+  Isso tornava-se um problema só se dois clientes tivessem o portal
+  ativo com o mesmo email ao mesmo tempo — o login deixaria de ser
+  determinístico. Bloqueado na origem: ativar o portal para um cliente
+  agora falha com um erro claro se outro cliente já tiver o portal ativo
+  com esse mesmo email.
+- **Dica de "esqueci-me da password"** adicionada às duas páginas de
+  login (equipa e Portal do Cliente) — antes não havia nenhuma indicação
+  do que fazer.
+- `engines` adicionado a `package.json` (`node >=20 <21`), alinhado com
+  o `Dockerfile` (`node:20-alpine`) e o CI (`node-version: "20"`).
+
+### Validado
+
+`prisma generate` e `tsc --noEmit` (projeto inteiro, zero erros) neste
+ambiente; o build de produção real e `prisma db push` contra Postgres
+correm automaticamente no CI a cada push a `master` (ver
+`docs/integracoes-estado.md` para o histórico dessa validação).
+
+### Ainda por decidir (infraestrutura, não código — ver secções 1–3)
+
+Nada de novo nesta passagem — continuam a ser as três decisões de
+sempre: fornecedor de Postgres, hosting (disco persistente vs. object
+storage) e domínio. A checklist da secção 6 não muda.
