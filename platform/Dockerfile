@@ -30,17 +30,17 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
-# Cliente Prisma gerado — cópia explícita de segurança (ver comentário acima).
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma/client ./node_modules/@prisma/client
-# CLI do Prisma (devDependency) — o output "standalone" do Next.js so inclui
-# as dependencies de producao, por isso "npx prisma" nao encontrava o
-# pacote localmente e ia buscar a ultima versao (7.x) ao registo em cada
-# arranque do container: mais lento, dependente de rede, e a v7 removeu a
-# flag --skip-generate usada no CMD abaixo, o que impedia o "node server.js"
-# de sequer arrancar (healthcheck falhava sempre). Copiar a versao fixa aqui
-# faz o "npx prisma" resolver a local, sem tocar na rede.
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
+# O output "standalone" do Next.js so inclui, no node_modules, as
+# dependencies de producao (tracing automatico) — falta o cliente Prisma
+# gerado e sobretudo a CLI "prisma" em si (devDependency, so usada para
+# "db push" no arranque do container) com as suas proprias dependencies
+# internas (ex.: @prisma/engines). Copiar pacote a pacote e fragil — cada
+# versao da CLI pode trazer novas dependencies internas de que nem sempre
+# temos conhecimento antecipado. Copia-se por isso o node_modules completo
+# do estagio "builder por cima do node_modules parcial do standalone: garante
+# que "node node_modules/prisma/build/index.js" (ver CMD) encontra tudo o
+# que precisa, sem tocar na rede no arranque do container.
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 
 # Armazenamento de ficheiros — persistência via Railway Volumes, não via
 # Docker VOLUME (Railway não suporta a instrução VOLUME do Dockerfile;
