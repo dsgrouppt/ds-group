@@ -29,10 +29,15 @@ COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma/client ./node_modules/@prisma/client
 
-# Volume para armazenamento de ficheiros — montar um volume persistente
-# neste caminho no fornecedor de hosting escolhido (ver docs/manual-tecnico-operacoes.md §3.4).
+# Armazenamento de ficheiros — persistência via Railway Volumes, não via
+# Docker VOLUME (Railway não suporta a instrução VOLUME do Dockerfile;
+# volumes são configurados no painel do serviço, não em build time).
+# Passo manual obrigatório no dashboard da Railway, para este serviço:
+#   Settings -> Volumes -> Add Volume -> Mount Path: /app/storage
+# STORAGE_DIR aponta para dentro desse mount path, garantindo que os
+# uploads sobrevivem a reinícios/redeploys do container.
 RUN mkdir -p /app/storage/uploads && chown -R nextjs:nodejs /app/storage
-VOLUME ["/app/storage"]
+ENV STORAGE_DIR=/app/storage/uploads
 
 USER nextjs
 EXPOSE 3001
