@@ -1,0 +1,4 @@
+# Mantem a pasta public/ no git (repo nunca teve esta pasta, mas o Dockerfile
+# faz COPY --from=builder /app/public ./public, que falhava com
+# "/app/public": not found. Podes apagar este ficheiro se um dia
+# adicionares assets estaticos reais aqui.
