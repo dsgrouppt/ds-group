@@ -5,7 +5,12 @@ FROM node:20-alpine AS deps
 WORKDIR /app
 RUN apk add --no-cache openssl
 COPY package.json package-lock.json ./
-RUN npm ci
+# --ignore-scripts: nesta fase so existem package.json/package-lock.json
+# (ver COPY acima) — o schema do Prisma so e copiado no estagio "builder"
+# (COPY . .). Sem isto, o postinstall (prisma generate) desta stage falha
+# porque nao encontra prisma/schema.prisma. O "builder" ja corre
+# "npx prisma generate" explicitamente depois de copiar tudo (linha 15).
+RUN npm ci --ignore-scripts
 
 FROM node:20-alpine AS builder
 WORKDIR /app
