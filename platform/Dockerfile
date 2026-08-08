@@ -33,6 +33,14 @@ COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 # Cliente Prisma gerado — cópia explícita de segurança (ver comentário acima).
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma/client ./node_modules/@prisma/client
+# CLI do Prisma (devDependency) — o output "standalone" do Next.js so inclui
+# as dependencies de producao, por isso "npx prisma" nao encontrava o
+# pacote localmente e ia buscar a ultima versao (7.x) ao registo em cada
+# arranque do container: mais lento, dependente de rede, e a v7 removeu a
+# flag --skip-generate usada no CMD abaixo, o que impedia o "node server.js"
+# de sequer arrancar (healthcheck falhava sempre). Copiar a versao fixa aqui
+# faz o "npx prisma" resolver a local, sem tocar na rede.
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
 
 # Armazenamento de ficheiros — persistência via Railway Volumes, não via
 # Docker VOLUME (Railway não suporta a instrução VOLUME do Dockerfile;
@@ -52,4 +60,4 @@ ENV PORT=3001
 # porque "db push" é idempotente (não altera nada se o schema já estiver
 # em sincronia). Alternativa mais formal: adotar "prisma migrate deploy"
 # com migrações versionadas quando a equipa crescer.
-CMD ["sh", "-c", "npx prisma db push --skip-generate && node server.js"]
+CMD ["sh", "-c", "node node_modules/prisma/build/index.js db push --skip-generate && node server.js"]
