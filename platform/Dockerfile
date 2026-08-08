@@ -30,6 +30,12 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
+COPY --from=builder --chown=nextjs:nodejs /app/src ./src
+# prisma/seed.ts importa diretamente de "../src/lib/enums" (codigo fonte, nao
+# compilado) e e executado via tsx/node_modules dentro do proprio container
+# (ver docs: comando "npm run db:seed" no Console da Railway) — sem esta
+# copia, falha com "Cannot find module '../src/lib/enums'" porque o output
+# "standalone" nao inclui a pasta src/ (so o codigo ja compilado em .next/).
 # O output "standalone" do Next.js so inclui, no node_modules, as
 # dependencies de producao (tracing automatico) — falta o cliente Prisma
 # gerado e sobretudo a CLI "prisma" em si (devDependency, so usada para
