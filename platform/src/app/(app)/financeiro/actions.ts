@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { requireModuleAccess } from "@/lib/session";
 import { can } from "@/lib/permissions";
 import { INVOICE_STATUS_LABEL } from "@/lib/enums";
+import { parseMoney } from "@/lib/money";
 
 const InvoiceSchema = z.object({
   number: z.string().min(1, "Número de fatura obrigatório").max(60),
@@ -43,7 +44,7 @@ export async function createInvoice(formData: FormData) {
     data: {
       number: data.number,
       projectId: data.projectId || undefined,
-      amount: Number(data.amount),
+      amount: parseMoney(data.amount, "Valor da fatura"),
       status: data.status,
       dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
       paidAt: data.status === "PAGA" ? new Date() : undefined,
@@ -84,7 +85,7 @@ export async function updateInvoice(invoiceId: string, formData: FormData) {
     data: {
       number: data.number,
       projectId: data.projectId || null,
-      amount: Number(data.amount),
+      amount: parseMoney(data.amount, "Valor da fatura"),
       status: data.status,
       dueDate: data.dueDate ? new Date(data.dueDate) : null,
       paidAt: data.status === "PAGA" ? (current?.paidAt ?? new Date()) : null,
@@ -132,7 +133,7 @@ export async function registerPayment(invoiceId: string, formData: FormData) {
   const data = parsed.data;
 
   await prisma.payment.create({
-    data: { invoiceId, amount: Number(data.amount), method: data.method || undefined },
+    data: { invoiceId, amount: parseMoney(data.amount, "Valor do pagamento"), method: data.method || undefined },
   });
 
   const invoice = await prisma.invoice.findUnique({ where: { id: invoiceId }, include: { payments: true } });
