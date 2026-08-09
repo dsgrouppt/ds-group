@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { requireModuleAccess } from "@/lib/session";
 import { can } from "@/lib/permissions";
 import { PROJECT_TYPE, PROJECT_STAGE_ORDER } from "@/lib/enums";
+import { parseOptionalMoney } from "@/lib/money";
 
 const ProjectSchema = z.object({
   title: z.string().min(2, "Título demasiado curto").max(150),
@@ -48,8 +49,8 @@ export async function createProject(formData: FormData) {
       location: data.location || undefined,
       startDate: data.startDate ? new Date(data.startDate) : undefined,
       dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
-      budgetAmount: data.budgetAmount ? Number(data.budgetAmount) : undefined,
-      costAmount: data.costAmount ? Number(data.costAmount) : undefined,
+      budgetAmount: parseOptionalMoney(data.budgetAmount, "Orcamento"),
+      costAmount: parseOptionalMoney(data.costAmount, "Custo"),
       ownerId: user.id,
     },
   });
@@ -113,8 +114,8 @@ export async function updateProject(projectId: string, formData: FormData) {
       location: data.location || null,
       startDate: data.startDate ? new Date(data.startDate) : null,
       dueDate: data.dueDate ? new Date(data.dueDate) : null,
-      budgetAmount: data.budgetAmount ? Number(data.budgetAmount) : null,
-      costAmount: data.costAmount ? Number(data.costAmount) : null,
+      budgetAmount: parseOptionalMoney(data.budgetAmount, "Orcamento") ?? null,
+      costAmount: parseOptionalMoney(data.costAmount, "Custo") ?? null,
     },
   });
 
