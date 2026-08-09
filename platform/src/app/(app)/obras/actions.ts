@@ -132,9 +132,16 @@ export async function deleteProject(projectId: string, formData: FormData) {
     throw new Error("Sem permissão para apagar obras.");
   }
 
-  const invoiceCount = await prisma.invoice.count({ where: { projectId } });
+  const [invoiceCount, taskCount, eventCount] = await Promise.all([
+    prisma.invoice.count({ where: { projectId } }),
+    prisma.task.count({ where: { projectId } }),
+    prisma.calendarEvent.count({ where: { projectId } }),
+  ]);
   if (invoiceCount > 0) {
     throw new Error("Não é possível apagar uma obra com faturas associadas.");
+  }
+  if (taskCount > 0 || eventCount > 0) {
+    throw new Error("Não é possível apagar uma obra com tarefas ou eventos de agenda associados. Remova-os primeiro.");
   }
 
   await prisma.project.delete({ where: { id: projectId } });
