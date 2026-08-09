@@ -42,7 +42,6 @@ async function getDashboardData(role: RoleValue) {
       select: { amount: true, probability: true },
       })
         : Promise.resolve([]),
-    }),
     prisma.task.findMany({
       where: { status: { in: ["PENDENTE", "EM_CURSO"] } },
       orderBy: { dueAt: "asc" },
@@ -56,13 +55,11 @@ async function getDashboardData(role: RoleValue) {
       orderBy: { startAt: "asc" },
       })
         : Promise.resolve([]),
-    }),
     showFinanceiro
     ? prisma.invoice.aggregate({
       where: { status: "PAGA", paidAt: { gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1) } },
   })
       : Promise.resolve({ _sum: { amount: null } }),
-    }),
     showCrm ? prisma.deal.count({ where: { stage: "FECHADO_GANHO" } }) : Promise.resolve(0),
     showCrm ? prisma.deal.count({ where: { stage: "FECHADO_PERDIDO" } }) : Promise.resolve(0),
     showFinanceiro
@@ -143,6 +140,7 @@ export default async function DashboardPage() {
         {data.showObras && <StatCard label="Obras Ativas" value={data.activeProjectCount} />}
         {data.showClientes && <StatCard label="Clientes" value={data.clientCount} />}
         {data.showCrm && (
+        <StatCard
           label="Pipeline Ponderado"
           value={data.weightedPipeline > 0 ? formatEuro(data.weightedPipeline) : null}
           hint="Valor × probabilidade de cada negócio em aberto"
