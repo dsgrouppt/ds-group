@@ -58,6 +58,7 @@ async function getDashboardData(role: RoleValue) {
     showFinanceiro
     ? prisma.invoice.aggregate({
       where: { status: "PAGA", paidAt: { gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1) } },
+        _sum: { amount: true },
   })
       : Promise.resolve({ _sum: { amount: null } }),
     showCrm ? prisma.deal.count({ where: { stage: "FECHADO_GANHO" } }) : Promise.resolve(0),
