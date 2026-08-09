@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { safeInternalPath } from "@/lib/url-safety";
 
 function ClientLoginForm() {
   const router = useRouter();
@@ -30,7 +31,7 @@ function ClientLoginForm() {
       return;
     }
 
-    router.push(params.get("callbackUrl") || "/portal");
+      router.push(safeInternalPath(params.get("callbackUrl"), "/portal"));
     router.refresh();
   }
 
