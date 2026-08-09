@@ -4,9 +4,13 @@
 // scripts de terceiros (sem GTM/analytics/pixels, ao contrário do
 // website público). 'unsafe-inline' em style-src é necessário para as
 // classes utilitárias do Tailwind injetadas em runtime pelo Next.
+// 'unsafe-inline' em script-src é necessário para os scripts inline que o
+// Next.js App Router injeta para transportar o payload de React Server
+// Components (self.__next_f.push(...)); sem isto, o CSP bloqueia esses
+// scripts, a hidratação falha (React #423) e a app fica em branco.
 const ContentSecurityPolicy = `
   default-src 'self';
-  script-src 'self';
+  script-src 'self' 'unsafe-inline';
   style-src 'self' 'unsafe-inline';
   img-src 'self' data:;
   font-src 'self' data:;
