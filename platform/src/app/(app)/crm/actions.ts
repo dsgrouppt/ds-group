@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { requireModuleAccess } from "@/lib/session";
 import { can } from "@/lib/permissions";
 import { DEAL_STAGE_ORDER, LEAD_SOURCE, PROJECT_TYPE, BUDGET_RANGE } from "@/lib/enums";
+import { parseOptionalMoney } from "@/lib/money";
 
 const DealSchema = z.object({
   title: z.string().min(2, "Título demasiado curto").max(150),
@@ -47,7 +48,7 @@ export async function createDeal(formData: FormData) {
       source: data.source,
       projectType: data.projectType,
       budgetRange: data.budgetRange && data.budgetRange in BUDGET_RANGE ? data.budgetRange : undefined,
-      amount: data.amount ? Number(data.amount) : undefined,
+      amount: parseOptionalMoney(data.amount, "Valor proposto"),
       notes: data.notes || undefined,
       ownerId: user.id,
     },
@@ -126,7 +127,7 @@ export async function updateDeal(dealId: string, formData: FormData) {
       source: data.source,
       projectType: data.projectType,
       budgetRange: data.budgetRange && data.budgetRange in BUDGET_RANGE ? data.budgetRange : null,
-      amount: data.amount ? Number(data.amount) : null,
+      amount: parseOptionalMoney(data.amount, "Valor proposto") ?? null,
       notes: data.notes || null,
     },
   });
