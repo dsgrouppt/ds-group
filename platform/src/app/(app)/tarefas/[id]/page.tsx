@@ -39,9 +39,10 @@ export default async function TaskDetailPage({ params }: { params: { id: string 
   ]);
 
   if (!task) notFound();
+  const canEditAttachments = canEdit && (!task.project || can(user.role, "obras", "edit"));
 
   const revalidatePath = `/tarefas/${task.id}`;
-  const boundUpload = uploadAttachment.bind(null, { taskId: task.id, revalidate: revalidatePath });
+  const boundUpload = uploadAttachment.bind(null, { taskId: task.id, projectId: task.projectId ?? undefined, revalidate: revalidatePath });
 
   return (
     <div>
@@ -137,7 +138,7 @@ export default async function TaskDetailPage({ params }: { params: { id: string 
             const id = String(formData.get("attachmentId"));
             await deleteAttachment(id, revalidatePath, formData);
           }}
-          canEdit={canEdit}
+          canEdit={canEditAttachments}
         />
       </div>
 
