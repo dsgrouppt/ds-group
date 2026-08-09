@@ -1,16 +1,23 @@
 import { prisma } from "@/lib/prisma";
+import { can } from "@/lib/permissions";
+import type { RoleValue } from "@/lib/enums";
 import { requireModuleAccess } from "@/lib/session";
 import { StatCard } from "@/components/ui/StatCard";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/Badge";
-import { DEAL_STAGE_LABEL, EVENT_TYPE_LABEL, TASK_STATUS_LABEL, LEAD_SOURCE_LABEL } from "@/lib/enums";
+import { EVENT_TYPE_LABEL, TASK_STATUS_LABEL, LEAD_SOURCE_LABEL } from "@/lib/enums";
 import { formatEuro } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
-async function getDashboardData() {
+async function getDashboardData(role: RoleValue) {
+  const showCrm = can(role, "crm", "view");
+  const showObras = can(role, "obras", "view");
+  const showClientes = can(role, "clientes", "view");
+  const showFinanceiro = can(role, "financeiro", "view");
+  const showAgenda = can(role, "agenda", "view");
   const [
     dealCount,
     activeProjectCount,
@@ -26,13 +33,15 @@ async function getDashboardData() {
     outstandingInvoices,
     leadsBySource,
   ] = await Promise.all([
-    prisma.deal.count({ where: { stage: { notIn: ["FECHADO_GANHO", "FECHADO_PERDIDO"] } } }),
-    prisma.project.count({ where: { stage: { not: "ENTREGUE" } } }),
-    prisma.client.count(),
-    prisma.deal.findMany({
+    showCrm ? prisma.deal.count({ where: { stage: { notIn: ["FECHADO_GANHO", "FECHADO_PERDIDO"] } } }) : Promise.resolve(0),
+    showObras ? prisma.project.count({ where: { stage: { not: "ENTREGUE" } } }) : Promise.resolve(0),
+    showClientes ? prisma.client.count() : Promise.resolve(0),
+    showCrm
+      ? prisma.deal.findMany({
       where: { stage: { notIn: ["FECHADO_GANHO", "FECHADO_PERDIDO"] } },
       select: { amount: true, probability: true },
-      take: 5000,
+      })
+        : Promise.resolve([]),
     }),
     prisma.task.findMany({
       where: { status: { in: ["PENDENTE", "EM_CURSO"] } },
@@ -41,28 +50,36 @@ async function getDashboardData() {
       include: { assignee: { select: { name: true } } },
     }),
     prisma.task.count({ where: { status: { in: ["PENDENTE", "EM_CURSO"] }, priority: "URGENTE" } }),
-    prisma.calendarEvent.findMany({
+    showAgenda
+      ? prisma.calendarEvent.findMany({
       where: { startAt: { gte: new Date() } },
       orderBy: { startAt: "asc" },
-      take: 5,
+      })
+        : Promise.resolve([]),
     }),
-    prisma.invoice.aggregate({
+    showFinanceiro
+    ? prisma.invoice.aggregate({
       where: { status: "PAGA", paidAt: { gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1) } },
-      _sum: { amount: true },
+  })
+      : Promise.resolve({ _sum: { amount: null } }),
     }),
-    prisma.deal.count({ where: { stage: "FECHADO_GANHO" } }),
-    prisma.deal.count({ where: { stage: "FECHADO_PERDIDO" } }),
-    prisma.project.findMany({
+    showCrm ? prisma.deal.count({ where: { stage: "FECHADO_GANHO" } }) : Promise.resolve(0),
+    showCrm ? prisma.deal.count({ where: { stage: "FECHADO_PERDIDO" } }) : Promise.resolve(0),
+    showFinanceiro
+  ? prisma.project.findMany({
       where: { budgetAmount: { not: null }, costAmount: { not: null } },
       select: { budgetAmount: true, costAmount: true },
       take: 5000,
-    }),
-    prisma.invoice.findMany({
+  })
+      : Promise.resolve([]),
+    showFinanceiro
+  ? prisma.invoice.findMany({
       where: { status: { in: ["EMITIDA", "ATRASADA"] } },
       include: { payments: true },
       take: 5000,
-    }),
-    prisma.deal.groupBy({ by: ["source"], _count: { source: true } }),
+  })
+      : Promise.resolve([]),
+    showCrm ? prisma.deal.groupBy({ by: ["source"], _count: { source: true } }) : Promise.resolve([]),
   ]);
 
   const weightedPipeline = openDeals.reduce((sum, d) => sum + ((d.amount ?? 0) * d.probability) / 100, 0);
@@ -98,12 +115,20 @@ async function getDashboardData() {
     outstandingAmount,
     leadsBySource,
     totalLeads,
+    showCrm,
+    showObras,
+    showClientes,
+    showFinanceiro,
+    showAgenda,
   };
 }
 
 export default async function DashboardPage() {
-  await requireModuleAccess("dashboard");
-  const data = await getDashboardData();
+  const user = await requireModuleAccess("dashboard");
+  const data = await getDashboardData(user.role);
+
+  const showFirstRow = data.showCrm || data.showObras || data.showClientes;
+  const showSecondRow = data.showCrm || data.showFinanceiro;
 
   return (
     <div>
@@ -112,40 +137,53 @@ export default async function DashboardPage() {
         description="Visão executiva da atividade comercial, operacional e financeira da DS Group."
       />
 
+      {showFirstRow && (
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <StatCard label="Negócios em Aberto" value={data.dealCount} />
-        <StatCard label="Obras Ativas" value={data.activeProjectCount} />
-        <StatCard label="Clientes" value={data.clientCount} />
-        <StatCard
+        {data.showCrm && <StatCard label="Negócios em Aberto" value={data.dealCount} />}
+        {data.showObras && <StatCard label="Obras Ativas" value={data.activeProjectCount} />}
+        {data.showClientes && <StatCard label="Clientes" value={data.clientCount} />}
+        {data.showCrm && (
           label="Pipeline Ponderado"
           value={data.weightedPipeline > 0 ? formatEuro(data.weightedPipeline) : null}
           hint="Valor × probabilidade de cada negócio em aberto"
         />
+        )}
       </div>
+      )}
 
+      {showSecondRow && (
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+        {data.showCrm && (
         <StatCard
           label="Taxa de Fecho (Win Rate)"
           value={data.winRate !== null ? data.winRate.toFixed(0) : null}
           suffix={data.winRate !== null ? "%" : undefined}
           hint={`${data.dealsWonCount} ganhos · ${data.dealsLostCount} perdidos`}
         />
+        )}
+        {data.showFinanceiro && (
         <StatCard
           label="Margem Bruta Média"
           value={data.avgMargin !== null ? data.avgMargin.toFixed(0) : null}
           suffix={data.avgMargin !== null ? "%" : undefined}
           hint="Obras com orçamento e custo registados"
         />
+        )}
+        {data.showFinanceiro && (
         <StatCard
           label="Faturação Recebida (mês)"
           value={data.revenueThisMonth > 0 ? formatEuro(data.revenueThisMonth) : null}
         />
+        )}
+        {data.showFinanceiro && (
         <StatCard
           label="Por Receber"
           value={data.outstandingAmount > 0 ? formatEuro(data.outstandingAmount) : null}
           hint="Faturas emitidas ou atrasadas"
         />
+        )}
       </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <Card>
@@ -180,6 +218,7 @@ export default async function DashboardPage() {
           </CardBody>
         </Card>
 
+        {data.showAgenda && (
         <Card>
           <CardHeader>
             <h2 className="font-display text-[1.1rem]">Próximos Eventos</h2>
@@ -206,8 +245,10 @@ export default async function DashboardPage() {
             )}
           </CardBody>
         </Card>
+      )}
       </div>
 
+      {data.showCrm && (
       <Card>
         <CardHeader>
           <h2 className="font-display text-[1.1rem]">Desempenho Comercial — Leads por Origem</h2>
@@ -231,6 +272,7 @@ export default async function DashboardPage() {
           )}
         </CardBody>
       </Card>
+      )}
 
       <p className="text-xs text-graphite-light mt-8">
         Indicadores adicionais (NPS pós-obra, taxa de reincidência, tempo médio de resposta a lead) entram quando
