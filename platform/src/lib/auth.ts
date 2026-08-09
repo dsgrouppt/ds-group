@@ -29,6 +29,11 @@ const REVALIDATE_INTERVAL_MS = 60_000;
 // dados: `requireUser()` e `requireClient()` verificam sempre
 // `token.kind` e rejeitam o outro tipo.
 export const authOptions: NextAuthOptions = {
+    // Suporta múltiplos domínios (railway.app + os.dsprojects.pt) sem
+    // fixar NEXTAUTH_URL: confia no cabeçalho Host do pedido (a Railway
+    // já está atrás de um proxy fidedigno) em vez de usar um único URL
+    // fixo para os callbacks de autenticação.
+    trustHost: true,
   session: { strategy: "jwt", maxAge: SESSION_MAX_AGE_SECONDS },
   jwt: { maxAge: SESSION_MAX_AGE_SECONDS },
   pages: {
