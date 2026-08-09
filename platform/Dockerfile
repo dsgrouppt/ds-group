@@ -22,7 +22,7 @@ RUN npm run build
 
 FROM node:20-alpine AS runner
 WORKDIR /app
-RUN apk add --no-cache openssl
+RUN apk add --no-cache openssl su-exec
 ENV NODE_ENV=production
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
 
@@ -58,9 +58,23 @@ COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 RUN mkdir -p /app/storage/uploads && chown -R nextjs:nodejs /app/storage
 ENV STORAGE_DIR=/app/storage/uploads
 
-USER nextjs
+# NOTA: nao trocamos para "USER nextjs" aqui. A Railway monta o Volume
+# persistente em /app/storage DEPOIS do container arrancar, sobrepondo-se a
+# este diretorio (ja criado e chown'ado acima em build time) com um volume
+# novo que fica root:root. Isso causava "EACCES: permission denied, mkdir
+# '/app/storage/uploads'" em todos os uploads de ficheiros em producao,
+# porque o processo Node.js corria como "nextjs" e nao tinha permissao para
+# criar subpastas no volume montado por root. O container arranca agora como
+# root, corre docker-entrypoint.sh (que reaplica o chown ao volume JA
+# montado, em cada arranque) e so depois entrega a execucao ao utilizador
+# "nextjs" via su-exec -- o processo Node.js final nunca corre como root.
+COPY --chown=nextjs:nodejs docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh
+
 EXPOSE 3001
 ENV PORT=3001
+
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
 
 # Aplica o schema à base de dados antes de arrancar — seguro em produção
 # porque "db push" é idempotente (não altera nada se o schema já estiver
