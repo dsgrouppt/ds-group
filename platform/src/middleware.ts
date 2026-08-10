@@ -12,6 +12,15 @@ export default async function middleware(req: NextRequest) {
     const { pathname } = req.nextUrl;
     const isPortalRoute = pathname.startsWith("/portal");
     const isFileDownload = pathname.startsWith("/api/files/");
+    // /api/internal/* nunca é chamado por um browser com sessão — é invocado
+    // máquina-a-máquina pelo serviço de backup via rede privada da Railway
+    // (ver Bug #24, src/app/api/internal/uploads-backup/route.ts), autenticado
+    // com um token partilhado (Authorization: Bearer), não com o cookie de
+    // sessão do NextAuth. A verificação de autorização é feita na própria
+    // rota, não aqui.
+    if (pathname.startsWith("/api/internal/")) {
+      return NextResponse.next();
+    }
 
   if (isPortalRoute && pathname === "/portal/login") {
         return NextResponse.next();

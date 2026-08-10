@@ -7,6 +7,7 @@ import crypto from "node:crypto";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireModuleAccess } from "@/lib/session";
+import { can } from "@/lib/permissions";
 import { ROLE, ROLE_LABEL } from "@/lib/enums";
 
 const CreateUserSchema = z.object({
@@ -15,8 +16,31 @@ const CreateUserSchema = z.object({
   role: z.string().max(40),
 });
 
+/**
+ * Bug #18 (auditoria adversarial independente, ago/2026): createUser,
+ * updateUser e resetPassword verificavam apenas `requireModuleAccess`
+ * (permissao de "view" sobre o modulo "definicoes"), nunca a permissao de
+ * "edit" -- ao contrario de todas as outras Server Actions da plataforma,
+ * que seguem sempre o padrao `requireModuleAccess` + `can(role, modulo,
+ * "edit")`.
+ *
+ * Risco real: hoje isto e inofensivo por coincidencia, porque a matriz em
+ * permissions.ts define view === edit === [ADMIN] para "definicoes". Mas
+ * e uma falha estrutural de controlo de acesso (CWE-862) na parte mais
+ * sensivel de toda a plataforma -- criacao de utilizadores, atribuicao de
+ * roles e reset de passwords. No momento em que a matriz de "view" for
+ * alargada (um pedido de negocio plausivel, ex.: dar a Direcao acesso de
+ * leitura a lista de utilizadores), qualquer perfil adicionado a essa
+ * lista passa a poder criar administradores e repor a password de
+ * qualquer conta, sem que o codigo destas funcoes seja sequer tocado.
+ * Corrigido tornando explicita a verificacao de "edit", tal como em todos
+ * os outros modulos.
+ */
 export async function createUser(formData: FormData) {
   const admin = await requireModuleAccess("definicoes");
+  if (!can(admin.role, "definicoes", "edit")) {
+    throw new Error("Sem permissão para criar utilizadores.");
+  }
 
   const parsed = CreateUserSchema.safeParse({
     name: formData.get("name"),
@@ -59,6 +83,9 @@ const UpdateUserSchema = z.object({
 
 export async function updateUser(formData: FormData) {
   const admin = await requireModuleAccess("definicoes");
+  if (!can(admin.role, "definicoes", "edit")) {
+    throw new Error("Sem permissão para editar utilizadores.");
+  }
 
   const parsed = UpdateUserSchema.safeParse({
     userId: formData.get("userId"),
@@ -95,6 +122,9 @@ export async function updateUser(formData: FormData) {
 export async function resetPassword(userId: string, formData: FormData) {
   void formData;
   const admin = await requireModuleAccess("definicoes");
+  if (!can(admin.role, "definicoes", "edit")) {
+    throw new Error("Sem permissão para repor passwords.");
+  }
 
   const generatedPassword = crypto.randomBytes(9).toString("base64url");
   const passwordHash = await bcrypt.hash(generatedPassword, 12);

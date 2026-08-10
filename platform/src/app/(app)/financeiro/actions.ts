@@ -8,7 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { requireModuleAccess } from "@/lib/session";
 import { can } from "@/lib/permissions";
 import { INVOICE_STATUS_LABEL } from "@/lib/enums";
-import { parseMoney } from "@/lib/money";
+import { parseMoney, toCents } from "@/lib/money";
 
 const InvoiceSchema = z.object({
   number: z.string().min(1, "Número de fatura obrigatório").max(60),
@@ -217,7 +217,11 @@ export async function registerPayment(invoiceId: string, formData: FormData) {
         });
         const totalPaid = _sum.amount ?? 0;
 
-        if (totalPaid >= invoice.amount && invoice.status !== "PAGA") {
+        // Comparacao em centimos inteiros, nao em floats -- ver Bug #20 em
+        // src/lib/money.ts. `totalPaid >= invoice.amount` direto em floats
+        // falha para somas matematicamente exatas (ex.: 0.58+0.58+0.58
+        // nunca chega a 1.74 em IEEE-754).
+        if (toCents(totalPaid) >= toCents(invoice.amount) && invoice.status !== "PAGA") {
           await tx.invoice.update({
             where: { id: invoiceId },
             data: { status: "PAGA", paidAt: new Date() },

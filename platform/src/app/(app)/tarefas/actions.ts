@@ -121,8 +121,20 @@ export async function deleteTask(taskId: string, formData: FormData) {
   redirect("/tarefas");
 }
 
+/**
+ * Bug #19 (auditoria adversarial independente, ago/2026): mesmo padrao do
+ * Bug #18 -- addComment so verificava a permissao de "view" do modulo
+ * "tarefas", nunca a de "edit", ao contrario de createTask/updateTask/
+ * deleteTask no mesmo ficheiro. Hoje inofensivo porque tarefas.view ===
+ * tarefas.edit na matriz, mas seria a primeira funcao a quebrar
+ * silenciosamente se essa matriz alguma vez divergir. Corrigido para
+ * seguir o mesmo padrao das restantes acoes deste ficheiro.
+ */
 export async function addComment(taskId: string, formData: FormData) {
   const user = await requireModuleAccess("tarefas");
+  if (!can(user.role, "tarefas", "edit")) {
+    throw new Error("Sem permissão para comentar tarefas.");
+  }
 
   const body = String(formData.get("body") ?? "").trim();
   if (!body) {

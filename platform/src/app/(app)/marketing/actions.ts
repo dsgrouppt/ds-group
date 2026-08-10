@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { requireModuleAccess } from "@/lib/session";
 import { can } from "@/lib/permissions";
 import { CAMPAIGN_CHANNEL_LABEL } from "@/lib/enums";
+import { parseOptionalMoney } from "@/lib/money";
 
 const CampaignSchema = z.object({
   name: z.string().min(2, "Nome demasiado curto").max(150),
@@ -17,6 +18,19 @@ const CampaignSchema = z.object({
   notes: z.string().max(5000).optional(),
 });
 
+/**
+ * Bug #23 (auditoria adversarial independente, ago/2026): `budget` usava
+ * `Number(data.budget)` diretamente, ao contrario de todos os outros
+ * campos monetarios da plataforma (Invoice.amount, Payment.amount,
+ * Deal.amount, Project.budgetAmount/costAmount), que passam por
+ * `parseMoney`/`parseOptionalMoney` desde o Bug #7. `Number()` sem
+ * validacao aceita negativos, `Infinity` e `NaN` -- e o Postgres `float8`
+ * aceita `NaN` como valor valido, por isso um orcamento invalido nao
+ * gerava erro, ficava silenciosamente gravado como NaN, corrompendo
+ * qualquer soma/comparacao futura envolvendo orcamentos de campanhas.
+ * Corrigido para usar `parseOptionalMoney`, tal como todos os outros
+ * campos monetarios.
+ */
 export async function createCampaign(formData: FormData) {
   const user = await requireModuleAccess("marketing");
   if (!can(user.role, "marketing", "edit")) {
@@ -45,7 +59,7 @@ export async function createCampaign(formData: FormData) {
     data: {
       name: data.name,
       channel: data.channel,
-      budget: data.budget ? Number(data.budget) : undefined,
+      budget: parseOptionalMoney(data.budget, "Orçamento") ?? undefined,
       startDate: data.startDate ? new Date(data.startDate) : undefined,
       endDate: data.endDate ? new Date(data.endDate) : undefined,
       notes: data.notes || undefined,
@@ -87,7 +101,7 @@ export async function updateCampaign(campaignId: string, formData: FormData) {
     data: {
       name: data.name,
       channel: data.channel,
-      budget: data.budget ? Number(data.budget) : null,
+      budget: parseOptionalMoney(data.budget, "Orçamento") ?? null,
       startDate: data.startDate ? new Date(data.startDate) : null,
       endDate: data.endDate ? new Date(data.endDate) : null,
       notes: data.notes || null,

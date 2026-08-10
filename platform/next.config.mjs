@@ -22,10 +22,26 @@ const ContentSecurityPolicy = `
   upgrade-insecure-requests;
 `.replace(/\s{2,}/g, " ").trim();
 
+// Bug #21 (auditoria adversarial independente, ago/2026): Server Actions no
+// Next.js 14 tem um limite de corpo de pedido de 1MB por omissao, nunca
+// configurado neste ficheiro. `src/lib/storage.ts` valida e anuncia um
+// limite de 25MB (`MAX_SIZE_BYTES`), mas essa validacao nunca era
+// alcancada para ficheiros acima de ~1MB -- o proprio Next.js rejeitava o
+// pedido antes de chegar a Server Action, com um erro generico ("Body
+// exceeded 1 MB limit"). Isto partia, na pratica, o caso de uso central
+// do modulo Obras: fotos de obra tiradas em telemovel tipicamente pesam
+// 3-10MB (mais ainda em HEIC/alta resolucao), muito acima de 1MB. Corrigido
+// alinhando o limite de Server Actions com o limite ja documentado e
+// validado em storage.ts.
 const nextConfig = {
   output: "standalone",
   reactStrictMode: true,
   poweredByHeader: false,
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "25mb",
+    },
+  },
   async headers() {
     return [
       {

@@ -20,6 +20,19 @@ const ProjectSchema = z.object({
   costAmount: z.string().max(30).optional(),
 });
 
+/**
+ * Bug #22 (auditoria adversarial independente, ago/2026): `costAmount` nunca
+ * era extraido do `formData` antes do `safeParse` -- ao contrario de
+ * `updateProject`, que inclui a mesma linha. `ProjectSchema` define o campo,
+ * e `parseOptionalMoney(data.costAmount, ...)` mais abaixo era chamado
+ * normalmente, mas `data.costAmount` era sempre `undefined` porque nunca
+ * tinha sido lido do formulario. Resultado: qualquer valor de "Custo"
+ * escrito ao CRIAR uma obra era descartado silenciosamente, sem erro nem
+ * aviso -- só reaparecia se alguem voltasse a editar a obra manualmente.
+ * Para uma empresa de remodelacoes cujo controlo de rentabilidade depende
+ * de comparar orcamento vs. custo real por obra, isto e perda silenciosa
+ * de dados financeiros logo na criacao do registo.
+ */
 export async function createProject(formData: FormData) {
   const user = await requireModuleAccess("obras");
   if (!can(user.role, "obras", "edit")) {
@@ -34,6 +47,7 @@ export async function createProject(formData: FormData) {
     startDate: formData.get("startDate"),
     dueDate: formData.get("dueDate"),
     budgetAmount: formData.get("budgetAmount"),
+    costAmount: formData.get("costAmount"),
   });
 
   if (!parsed.success) {
