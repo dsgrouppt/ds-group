@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireModuleAccess } from "@/lib/session";
 import { can } from "@/lib/permissions";
@@ -60,6 +61,26 @@ export async function createDeal(formData: FormData) {
   redirect("/crm");
 }
 
+/**
+ * Bug #11 (auditoria Fase C P2, ago/2026): esta funcao alterava o `stage`
+ * do negocio e, quando a nova etapa era "FECHADO_GANHO", criava
+ * automaticamente a Obra correspondente (automacao central do fluxo
+ * CRM -> Obras, ver docs/crm-especificacao.md §6) -- mas eram duas escritas
+ * distintas, sem transacao.
+ *
+ * Risco real: se o processo falhasse ou o pedido expirasse depois do
+ * `deal.update` marcar o negocio como "FECHADO_GANHO" mas antes do
+ * `project.create` correr, o negocio ficava permanentemente marcado como
+ * ganho sem nunca gerar a Obra -- e como o controlo de avanco de etapa na
+ * interface e condicionado pela etapa *atual*, deixava de existir forma de
+ * voltar a despoletar a automacao. Perda silenciosa de uma Obra inteira,
+ * sem qualquer erro visivel.
+ *
+ * Corrigido com `$transaction`: a mudanca de etapa, a criacao condicional
+ * da Obra e o registo de auditoria sao agora atomicos -- ou acontecem
+ * todos, ou nenhum acontece (e o negocio permanece na etapa anterior,
+ * pronto para nova tentativa).
+ */
 export async function advanceDealStage(dealId: string, formData: FormData) {
   const user = await requireModuleAccess("crm");
   if (!can(user.role, "crm", "edit")) {
@@ -70,16 +91,15 @@ export async function advanceDealStage(dealId: string, formData: FormData) {
     throw new Error("Etapa inválida.");
   }
 
-  await prisma.deal.update({ where: { id: dealId }, data: { stage: nextStage } });
+  await prisma.$transaction(async (tx) => {
+    const deal = await tx.deal.update({ where: { id: dealId }, data: { stage: nextStage } });
 
-  // "Fechado — Ganho" cria automaticamente uma Obra, conforme
-  // docs/crm-especificacao.md §6 (automação "Negócio marcado Fechado — Ganho").
-  if (nextStage === "FECHADO_GANHO") {
-    const deal = await prisma.deal.findUnique({ where: { id: dealId } });
-    if (deal) {
-      const existingProject = await prisma.project.findUnique({ where: { dealId } });
+    // "Fechado — Ganho" cria automaticamente uma Obra, conforme
+    // docs/crm-especificacao.md §6 (automação "Negócio marcado Fechado — Ganho").
+    if (nextStage === "FECHADO_GANHO") {
+      const existingProject = await tx.project.findUnique({ where: { dealId } });
       if (!existingProject) {
-        await prisma.project.create({
+        await tx.project.create({
           data: {
             title: deal.title,
             clientId: deal.clientId,
@@ -91,9 +111,11 @@ export async function advanceDealStage(dealId: string, formData: FormData) {
         });
       }
     }
-  }
 
-  await prisma.activityLog.create({ data: { userId: user.id, action: "STAGE_CHANGE", entity: "Deal", entityId: dealId } });
+    await tx.activityLog.create({
+      data: { userId: user.id, action: "STAGE_CHANGE", entity: "Deal", entityId: dealId },
+    });
+  });
 
   revalidatePath("/crm");
   revalidatePath("/obras");
@@ -138,6 +160,16 @@ export async function updateDeal(dealId: string, formData: FormData) {
   revalidatePath(`/crm/${dealId}`);
 }
 
+/**
+ * Bug #12 (auditoria Fase C P2, ago/2026): o guard "nao apagar negocio com
+ * obra associada" lia `project.findUnique({dealId})` e so depois apagava
+ * o Deal -- sem transacao. Se `advanceDealStage` criasse a Obra
+ * exatamente na janela entre a verificacao e o delete, o Deal podia ser
+ * apagado com uma Obra orfa a apontar para um `dealId` inexistente (risco
+ * MEDIUM: o schema torna este cenario raro porque `Project.dealId` e
+ * unico, mas a janela de tempo existe). Corrigido movendo a verificacao
+ * para dentro da mesma `$transaction` que o delete.
+ */
 export async function deleteDeal(dealId: string, formData: FormData) {
   const user = await requireModuleAccess("crm");
   void formData;
@@ -145,13 +177,17 @@ export async function deleteDeal(dealId: string, formData: FormData) {
     throw new Error("Sem permissão para apagar negócios.");
   }
 
-  const project = await prisma.project.findUnique({ where: { dealId } });
-  if (project) {
-    throw new Error("Não é possível apagar um negócio que já gerou uma obra.");
-  }
+  await prisma.$transaction(async (tx) => {
+    const project = await tx.project.findUnique({ where: { dealId } });
+    if (project) {
+      throw new Error("Não é possível apagar um negócio que já gerou uma obra.");
+    }
 
-  await prisma.deal.delete({ where: { id: dealId } });
-  await prisma.activityLog.create({ data: { userId: user.id, action: "DELETE", entity: "Deal", entityId: dealId } });
+    await tx.deal.delete({ where: { id: dealId } });
+    await tx.activityLog.create({
+      data: { userId: user.id, action: "DELETE", entity: "Deal", entityId: dealId },
+    });
+  });
 
   revalidatePath("/crm");
   redirect("/crm");

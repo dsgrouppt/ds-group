@@ -61,23 +61,42 @@ export async function uploadAttachment(target: UploadTarget, formData: FormData)
 
   const saved = await saveFile(file);
 
-  await prisma.attachment.create({
+  // Bug #16 (auditoria Fase C P2, ago/2026 — MEDIUM): o ficheiro era
+  // gravado em disco e so depois criado o registo Attachment na BD, como
+  // duas operacoes distintas sem qualquer rede de seguranca entre elas.
+  // Se o processo falhasse ou o pedido expirasse entre `saveFile` e o
+  // `attachment.create`, o ficheiro ficava orfao em disco para sempre —
+  // nunca aparece em lado nenhum da aplicacao, nunca e limpo pela
+  // retencao de backups (que so cobre a base de dados), e vai-se
+  // acumulando como fuga de armazenamento silenciosa. Corrigido:
+  // `attachment.create` + `activityLog.create` passam a ser atomicos via
+  // `$transaction`; se a transacao falhar por qualquer motivo, o ficheiro
+  // que acabou de ser gravado e apagado de imediato (compensacao manual,
+  // ja que o sistema de ficheiros nao participa em transacoes SQL).
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.attachment.create({
         data: {
-                filename: saved.filename,
-                originalName: saved.originalName,
-                mimeType: saved.mimeType,
-                size: saved.size,
-                path: saved.relativePath,
-                clientId: target.clientId,
-                projectId: target.projectId,
-                taskId: target.taskId,
-                uploadedById: user.id,
-                kind,
-                visibleToClient,
+          filename: saved.filename,
+          originalName: saved.originalName,
+          mimeType: saved.mimeType,
+          size: saved.size,
+          path: saved.relativePath,
+          clientId: target.clientId,
+          projectId: target.projectId,
+          taskId: target.taskId,
+          uploadedById: user.id,
+          kind,
+          visibleToClient,
         },
-  });
+      });
 
-  await prisma.activityLog.create({ data: { userId: user.id, action: "UPLOAD", entity: "Attachment" } });
+      await tx.activityLog.create({ data: { userId: user.id, action: "UPLOAD", entity: "Attachment" } });
+    });
+  } catch (err) {
+    await deleteStoredFile(saved.relativePath);
+    throw err;
+  }
 
   revalidatePath(target.revalidate);
 }
@@ -94,9 +113,26 @@ export async function deleteAttachment(attachmentId: string, revalidate: string,
           throw new Error("Sem permissão para apagar este ficheiro.");
     }
 
+  // Bug #17 (auditoria Fase C P2, ago/2026 — MEDIUM): a ordem original era
+  // apagar o ficheiro em disco e SO DEPOIS o registo na base de dados. Se
+  // o processo falhasse entre as duas operacoes, o registo Attachment
+  // sobrevivia a apontar para um ficheiro que ja nao existe — visivel ao
+  // utilizador como uma foto de obra ou documento partido (404) ate
+  // alguem reparar e apagar manualmente. Corrigido invertendo a ordem:
+  // primeiro apaga-se o registo na base de dados (dentro de uma
+  // `$transaction` com o log de auditoria, para atomicidade), e só depois
+  // de essa transação confirmar com sucesso é que o ficheiro é removido
+  // do disco. Nesta ordem, na pior das hipóteses (falha a meio) fica um
+  // ficheiro órfão em disco sem registo — inofensivo, sem impacto visível
+  // para o utilizador, e não um link partido na aplicação.
+  await prisma.$transaction(async (tx) => {
+    await tx.attachment.delete({ where: { id: attachmentId } });
+    await tx.activityLog.create({
+      data: { userId: user.id, action: "DELETE", entity: "Attachment", entityId: attachmentId },
+    });
+  });
+
   await deleteStoredFile(attachment.path);
-    await prisma.attachment.delete({ where: { id: attachmentId } });
-    await prisma.activityLog.create({ data: { userId: user.id, action: "DELETE", entity: "Attachment", entityId: attachmentId } });
 
   revalidatePath(revalidate);
 }

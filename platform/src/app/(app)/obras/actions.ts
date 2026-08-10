@@ -125,6 +125,23 @@ export async function updateProject(projectId: string, formData: FormData) {
   revalidatePath(`/obras/${projectId}`);
 }
 
+/**
+ * Bug #15 (auditoria Fase C P2, ago/2026 — HIGH): o guard que impede
+ * apagar uma Obra com faturas/tarefas/eventos associados contava os
+ * registos relacionados e so depois apagava o Project — tres `count()`
+ * (em paralelo via `Promise.all`, mas isso so os torna concorrentes entre
+ * si, nao atomicos com o `delete` seguinte) fora de qualquer transacao.
+ * Risco real: uma Invoice, Task ou CalendarEvent podia ser criada para
+ * esta obra exatamente na janela entre a contagem e o delete — nenhuma
+ * das relacoes (`Invoice.projectId`, `Task.projectId`,
+ * `CalendarEvent.projectId`) tem `onDelete: Cascade` explicito no schema,
+ * por isso o resultado dependeria do comportamento por omissao gerado
+ * pela migracao: na pior hipotese, uma fatura financeira ficava com
+ * `projectId` apontado para um registo inexistente ou era desligada
+ * silenciosamente da obra, desaparecendo da vista financeira desse
+ * projeto sem aviso. Corrigido movendo as contagens para dentro da mesma
+ * `$transaction` que o delete, eliminando a janela.
+ */
 export async function deleteProject(projectId: string, formData: FormData) {
   const user = await requireModuleAccess("obras");
   void formData;
@@ -132,20 +149,24 @@ export async function deleteProject(projectId: string, formData: FormData) {
     throw new Error("Sem permissão para apagar obras.");
   }
 
-  const [invoiceCount, taskCount, eventCount] = await Promise.all([
-    prisma.invoice.count({ where: { projectId } }),
-    prisma.task.count({ where: { projectId } }),
-    prisma.calendarEvent.count({ where: { projectId } }),
-  ]);
-  if (invoiceCount > 0) {
-    throw new Error("Não é possível apagar uma obra com faturas associadas.");
-  }
-  if (taskCount > 0 || eventCount > 0) {
-    throw new Error("Não é possível apagar uma obra com tarefas ou eventos de agenda associados. Remova-os primeiro.");
-  }
+  await prisma.$transaction(async (tx) => {
+    const [invoiceCount, taskCount, eventCount] = await Promise.all([
+      tx.invoice.count({ where: { projectId } }),
+      tx.task.count({ where: { projectId } }),
+      tx.calendarEvent.count({ where: { projectId } }),
+    ]);
+    if (invoiceCount > 0) {
+      throw new Error("Não é possível apagar uma obra com faturas associadas.");
+    }
+    if (taskCount > 0 || eventCount > 0) {
+      throw new Error("Não é possível apagar uma obra com tarefas ou eventos de agenda associados. Remova-os primeiro.");
+    }
 
-  await prisma.project.delete({ where: { id: projectId } });
-  await prisma.activityLog.create({ data: { userId: user.id, action: "DELETE", entity: "Project", entityId: projectId } });
+    await tx.project.delete({ where: { id: projectId } });
+    await tx.activityLog.create({
+      data: { userId: user.id, action: "DELETE", entity: "Project", entityId: projectId },
+    });
+  });
 
   revalidatePath("/obras");
   redirect("/obras");
