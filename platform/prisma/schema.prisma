@@ -56,6 +56,11 @@ model User {
   taskComments  TaskComment[]
   attachments   Attachment[]
   activityLogs  ActivityLog[]
+
+  // Módulo "Site — Portefólio" (ver secção WEBSITE / CMS INTERNO, fundo do
+  // ficheiro) — quem criou/editou cada obra ou testemunho publicável no site.
+  websiteCaseStudiesCreated  WebsiteCaseStudy[]  @relation("WebsiteCaseStudyCreatedBy")
+  websiteTestimonialsCreated WebsiteTestimonial[] @relation("WebsiteTestimonialCreatedBy")
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -173,6 +178,12 @@ model Project {
   tags        TagOnProject[]
   attachments Attachment[]
   messages    ClientMessage[]
+
+  // Ligação opcional à ficha pública desta obra no site (ver WebsiteCaseStudy
+  // mais abaixo). Deliberadamente opcional e sem cascade: uma obra interna
+  // pode nunca chegar a ser publicada, e apagar a ficha pública nunca deve
+  // apagar o Project real.
+  websiteCaseStudy WebsiteCaseStudy?
 
   @@index([clientId])
   @@index([ownerId])
@@ -445,4 +456,114 @@ model TaskComment {
   createdAt DateTime @default(now())
 
   @@index([taskId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// WEBSITE — CMS INTERNO (Site "Portefólio")
+// ─────────────────────────────────────────────────────────────────────────
+// Adicionado autonomamente (ago/2026) como base para o pedido "CMS interno /
+// Integração DS OS → Website / Sistema de publicação" — ver
+// docs/website-cms-integracao.md para o desenho completo e o porquê da
+// decisão de NÃO expor uma API pública ao website nesta v1.
+//
+// Resumo: estes modelos são deliberadamente separados do `Project` (que tem
+// dados internos sensíveis — orçamento, custo, cliente). Uma `WebsiteCaseStudy`
+// é conteúdo curado à mão para publicação, nunca um espelho automático de um
+// `Project`. A ligação a `projectId` é só para referência interna (saber a
+// que obra real corresponde), nunca para expor dados do `Project` no site.
+//
+// IMPORTANTE: estes modelos ainda não existem na base de dados. Adicionar
+// aqui ao schema.prisma é o primeiro passo, mas só têm efeito depois de:
+//   1. Reveres os modelos abaixo;
+//   2. Correres `npx prisma db push` (ou adotares migrations versionadas,
+//      como está no Roadmap Prioridade 1) contra a base de dados de destino;
+//   3. Correres `npx prisma generate`.
+// Isto NÃO foi executado — nem local nem em produção — como parte deste
+// trabalho, propositadamente, dado que qualquer alteração à base de dados
+// de produção segue a tua regra de nunca assumir/alterar sem validação e
+// aprovação explícitas.
+
+// category: um dos valores de ServiceCategory no website (residencial |
+// premium | cozinhas | casas-de-banho | moradias | comercial)
+// status: DRAFT | PUBLISHED — só entra no "Exportar conteúdo" quando PUBLISHED.
+model WebsiteCaseStudy {
+  id          String  @id @default(cuid())
+  slug        String  @unique
+  title       String
+  category    String
+  location    String
+  summary     String
+
+  // Estrutura narrativa — todos opcionais, tal como no website (ver CaseStudy
+  // em website/src/types/index.ts).
+  challenge String?
+  planning  String?
+  execution String?
+  solution  String?
+  result    String?
+
+  servicesRealized String[] // slugs de website/src/lib/site-data.ts (services[].slug)
+  duration         String?
+  materials        String[]
+  featured         Boolean  @default(false)
+
+  status      String    @default("DRAFT")
+  publishedAt DateTime?
+
+  project   Project? @relation(fields: [projectId], references: [id])
+  projectId String?  @unique
+
+  media WebsiteMediaAsset[]
+  testimonials WebsiteTestimonial[]
+
+  createdBy   User?   @relation("WebsiteCaseStudyCreatedBy", fields: [createdById], references: [id])
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status])
+  @@index([category])
+}
+
+// kind: "foto" | "video" — role: "cover" | "gallery" | "video"
+// phase (só relevante para kind "foto" em role "gallery"): "antes" | "durante" | "depois"
+model WebsiteMediaAsset {
+  id          String @id @default(cuid())
+  caseStudy   WebsiteCaseStudy @relation(fields: [caseStudyId], references: [id], onDelete: Cascade)
+  caseStudyId String
+
+  kind        String
+  role        String
+  phase       String?
+  orientation String? // "horizontal" | "vertical"
+  src         String? // caminho relativo (ex.: "/media/obras/slug/foto-01.jpg") — decisão de storage ainda em aberto, ver docs/website-cms-integracao.md
+  embedUrl    String? // YouTube/Vimeo, quando kind = "video"
+  alt         String?
+  caption     String?
+  sortOrder   Int    @default(0)
+
+  @@index([caseStudyId])
+}
+
+// kind: "texto" | "video"
+model WebsiteTestimonial {
+  id         String  @id @default(cuid())
+  kind       String
+  clientName String?
+  location   String?
+  quote      String?
+  embedUrl   String?
+  photo      String?
+  rating     Int?
+  authorized Boolean @default(false)
+
+  caseStudy   WebsiteCaseStudy? @relation(fields: [caseStudyId], references: [id])
+  caseStudyId String?
+
+  createdBy   User?   @relation("WebsiteTestimonialCreatedBy", fields: [createdById], references: [id])
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([authorized])
 }

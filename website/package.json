@@ -9,7 +9,8 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "audit-media": "node scripts/audit-media.mjs"
+    "audit-media": "node scripts/audit-media.mjs",
+    "import-cms-export": "node scripts/import-cms-export.mjs"
   },
   "dependencies": {
     "framer-motion": "11.3.19",

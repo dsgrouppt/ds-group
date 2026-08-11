@@ -16,5 +16,6 @@ export const NAV_ITEMS: NavItem[] = [
   { key: "agenda", label: "Agenda", href: "/agenda" },
   { key: "rh", label: "Recursos Humanos", href: "/rh" },
   { key: "marketing", label: "Marketing", href: "/marketing" },
+  { key: "marketing", label: "Site — Portefólio", href: "/marketing/website" },
   { key: "definicoes", label: "Definições", href: "/definicoes" },
 ];
