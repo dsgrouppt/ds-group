@@ -109,10 +109,16 @@ model Client {
 // source: "GOOGLE_ADS" | "META_ADS" | "REFERENCIA" | "SEO_ORGANICO" | "GBP" | "OUTRO"
 // projectType: "RESIDENCIAL" | "MORADIA" | "COMERCIAL" | "INVESTIMENTO"
 // budgetRange: "R20_30K" | "R30_75K" | "R75_150K" | "R150K_PLUS"
-// stage (ver docs/crm-especificacao.md §4 — Pipeline Comercial):
+// stage (ver docs/05_Processo_Comercial_Operacional_DS.md §1 — Pipeline Comercial;
+//   as etapas 1.9 "Execução" e 1.10 "Pós-Venda" desse documento vivem no
+//   modelo Project, não aqui — ver comentário do Project mais abaixo):
 //   "NOVO_LEAD" | "QUALIFICADO" | "VISITA_AGENDADA" | "VISITA_REALIZADA" |
 //   "PROPOSTA_ENVIADA" | "EM_NEGOCIACAO" | "FECHADO_GANHO" | "FECHADO_PERDIDO"
-// lossReason: "PRECO" | "PRAZO" | "CONCORRENTE" | "ADIOU" | "SEM_RESPOSTA"
+// lossReason (ver doc 05 §1.8 e §7.3):
+//   "PRECO" | "PRAZO" | "CONCORRENTE" | "ADIOU" | "SEM_RESPOSTA" |
+//   "FORA_DE_AMBITO" | "OUTRO"
+// qualificationCategory — resultado do score de qualificação (doc 05 §3):
+//   "FRACO" (0–2) | "POTENCIAL" (3–5) | "QUALIFICADO" (6–8) | "PRIORITARIO" (9–10)
 model Deal {
   id                String    @id @default(cuid())
   title             String
@@ -133,6 +139,18 @@ model Deal {
   notes             String?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
+
+  // ── Processo comercial operacional (doc 05) — adicionado Fase 1, ago/2026 ──
+  // firstContactedAt: quando a "Primeiro Contacto" (ver Task) foi de facto
+  // concluída — mede o SLA real de resposta (doc 05 §2), distinto de
+  // createdAt (entrada do lead). Nulo enquanto o lead não foi contactado.
+  firstContactedAt     DateTime?
+  // qualificationScore/qualificationCategory: resultado do formulário de
+  // qualificação (doc 05 §3, 5 critérios de 0–2 pontos, máx. 10). Só
+  // preenchidos quando o negócio passa pela etapa "Qualificado" — nulos
+  // antes disso. Ver src/lib/qualification.ts para a fórmula.
+  qualificationScore    Int?
+  qualificationCategory String?
 
   project Project?
   tags    TagOnDeal[]
