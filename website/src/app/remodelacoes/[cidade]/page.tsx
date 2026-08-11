@@ -39,9 +39,12 @@ export default function LocalAreaPage({ params }: LocalPageProps) {
     url: `${siteConfig.url}/remodelacoes/${area.slug}`,
   });
 
+  // Nota: não existe uma página-índice "/remodelacoes" (só páginas por
+  // cidade) — um crumb intermédio "Áreas de Atuação" apontaria para o
+  // mesmo URL da própria página, o que é redundante e problemático em
+  // termos de schema (BreadcrumbList com itens de URL duplicado).
   const breadcrumb = breadcrumbJsonLd([
     { name: "Início", url: siteConfig.url },
-    { name: "Áreas de Atuação", url: `${siteConfig.url}/remodelacoes/${area.slug}` },
     { name: area.name, url: `${siteConfig.url}/remodelacoes/${area.slug}` },
   ]);
 

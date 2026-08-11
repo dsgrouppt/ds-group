@@ -90,6 +90,7 @@ export function Header() {
                                                             className="burger flex lg:hidden flex-col gap-[5px]"
                                                             aria-label={menuOpen ? "Fechar menu" : "Abrir menu"}
                                                             aria-expanded={menuOpen}
+                                                            aria-controls="mobileMenu"
                                                             onClick={() => setMenuOpen((v) => !v)}
                                                           >
                                                           <span style={menuOpen ? { transform: "translateY(6px) rotate(45deg)" } : undefined} />

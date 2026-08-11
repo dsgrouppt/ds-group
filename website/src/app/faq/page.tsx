@@ -46,13 +46,18 @@ export default function FaqPage() {
                   {group.category}
                 </h2>
               </Reveal>
-              <div className="flex flex-col gap-8">
+              <div className="flex flex-col">
                 {group.items.map((item, i) => (
-                  <Reveal key={item.question} index={i} delayStep={0.05} className="border-b border-black/[.08] pb-8">
-                    <h3 className="font-display font-normal text-[1.15rem] mb-3">{item.question}</h3>
-                    <p className="text-graphite font-light leading-[1.85] text-[1rem] max-w-[62ch]">
-                      {item.answer}
-                    </p>
+                  <Reveal key={item.question} index={i} delayStep={0.05}>
+                    <details className="faq-item">
+                      <summary className="faq-question">
+                        <span className="font-display font-normal text-[1.15rem]">{item.question}</span>
+                        <span className="faq-icon" aria-hidden="true" />
+                      </summary>
+                      <p className="faq-answer text-graphite font-light leading-[1.85] text-[1rem] max-w-[62ch]">
+                        {item.answer}
+                      </p>
+                    </details>
                   </Reveal>
                 ))}
               </div>

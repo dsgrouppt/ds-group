@@ -305,3 +305,30 @@ header.site-header.scrolled{
 .mobile-contact-btn:active{background:rgba(255,255,255,.08);}
 .mobile-contact-btn.whatsapp{background:#25d366;border-color:#25d366;color:#0a0a0a;}
 .mobile-contact-btn.whatsapp:active{background:#1fbd5a;}
+
+/* ===== FAQ — ACORDEÃO (details/summary nativo, sem JS) ===== */
+/* <details>/<summary> nativo: acessível por teclado e leitor de ecrã sem
+   trabalho extra (role="button" e aria-expanded já vêm do browser), e o
+   conteúdo continua presente no HTML inicial para SEO/crawlers mesmo
+   fechado — ao contrário de um acordeão só em JS que só monta o conteúdo
+   ao abrir. */
+.faq-item{border-bottom:1px solid rgba(0,0,0,.08);}
+.faq-item:first-of-type{border-top:1px solid rgba(0,0,0,.08);}
+.faq-question{
+  display:flex;align-items:center;justify-content:space-between;gap:2rem;
+  padding:1.7rem 0;cursor:pointer;list-style:none;
+  transition:opacity .3s var(--ease);
+}
+.faq-question::-webkit-details-marker{display:none;}
+.faq-question:hover{opacity:.6;}
+.faq-icon{
+  position:relative;width:18px;height:18px;flex-shrink:0;
+}
+.faq-icon::before,.faq-icon::after{
+  content:"";position:absolute;top:50%;left:50%;background:var(--gold);
+  transition:transform .35s var(--ease);
+}
+.faq-icon::before{width:14px;height:1px;transform:translate(-50%,-50%);}
+.faq-icon::after{width:1px;height:14px;transform:translate(-50%,-50%);}
+.faq-item[open] .faq-icon::after{transform:translate(-50%,-50%) rotate(90deg) scaleY(0);}
+.faq-answer{padding:0 0 1.9rem;}
