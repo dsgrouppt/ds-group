@@ -134,14 +134,12 @@ export const LOSS_REASON_LABEL: Record<LossReasonValue, string> = {
 // (preço, prazo, concorrente, fora de âmbito, outro) não geram reativação
 // automática porque representam uma recusa mais definitiva ou fora do
 // nosso controlo comercial.
-// Nº de dias: SEM_RESPOSTA = 45 (doc 05 §2, explícito). ADIOU = 90 — doc 05
-// §1.8 só define um intervalo ("passados 3 a 6 meses"); assumimos o limite
-// inferior (90 dias) como primeiro contacto de reativação. Ver relatório da
-// Fase 2 — a confirmar/ajustar pelo Diogo se preferir outro valor dentro do
-// intervalo aprovado.
+// Nº de dias: SEM_RESPOSTA = 45 (doc 05 §2, explícito). ADIOU = 7 dias —
+// decisão de negócio explícita do Diogo (1 semana), que substitui a
+// assunção inicial de 90 dias (não aprovada) usada num primeiro commit.
 export const REACTIVATION_DAYS: Partial<Record<LossReasonValue, number>> = {
   SEM_RESPOSTA: 45,
-  ADIOU: 90,
+  ADIOU: 7,
 };
 
 // Categoria resultante do score de qualificação (doc 05 §3).
