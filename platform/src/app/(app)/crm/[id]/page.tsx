@@ -16,8 +16,11 @@ import {
   BUDGET_RANGE_LABEL,
   DEAL_STAGE_LABEL,
   TASK_STATUS_LABEL,
+  LOSS_REASON_LABEL,
+  QUALIFICATION_CATEGORY_LABEL,
 } from "@/lib/enums";
-import { updateDeal, deleteDeal } from "../actions";
+import { QUALIFICATION_CRITERIA } from "@/lib/qualification";
+import { updateDeal, deleteDeal, advanceDealStage, submitQualification } from "../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -56,6 +59,23 @@ export default async function DealDetailPage({ params }: { params: { id: string 
             </Link>
           </CardBody>
         </Card>
+      )}
+
+      {(deal.qualificationCategory || deal.firstContactedAt || deal.lossReason) && (
+        <div className="flex flex-wrap gap-2 mb-6">
+          {deal.qualificationCategory && (
+            <Badge tone={deal.qualificationCategory === "PRIORITARIO" || deal.qualificationCategory === "QUALIFICADO" ? "success" : "neutral"}>
+              Qualificação: {QUALIFICATION_CATEGORY_LABEL[deal.qualificationCategory as keyof typeof QUALIFICATION_CATEGORY_LABEL] ?? deal.qualificationCategory}
+              {typeof deal.qualificationScore === "number" ? ` (${deal.qualificationScore}/10)` : ""}
+            </Badge>
+          )}
+          {deal.firstContactedAt && (
+            <Badge tone="neutral">Primeiro contacto: {deal.firstContactedAt.toLocaleString("pt-PT")}</Badge>
+          )}
+          {deal.lossReason && (
+            <Badge tone="danger">Motivo de perda: {LOSS_REASON_LABEL[deal.lossReason as keyof typeof LOSS_REASON_LABEL] ?? deal.lossReason}</Badge>
+          )}
+        </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -148,6 +168,63 @@ export default async function DealDetailPage({ params }: { params: { id: string 
           </CardBody>
         </Card>
       </div>
+
+      {canEdit && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+          <Card>
+            <CardHeader>
+              <h2 className="font-display text-[1.1rem]">Qualificação (doc 05 §3)</h2>
+            </CardHeader>
+            <CardBody>
+              <form action={submitQualification.bind(null, deal.id)} className="flex flex-col gap-4">
+                {QUALIFICATION_CRITERIA.map((criterion) => (
+                  <FieldGroup key={criterion.key} label={criterion.label} htmlFor={criterion.key} hint={criterion.helpText}>
+                    <Select id={criterion.key} name={criterion.key} defaultValue="" required>
+                      <option value="" disabled>
+                        Selecionar
+                      </option>
+                      {criterion.options.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.value} — {opt.label}
+                        </option>
+                      ))}
+                    </Select>
+                  </FieldGroup>
+                ))}
+                <SubmitButton>Calcular Score e Guardar</SubmitButton>
+              </form>
+            </CardBody>
+          </Card>
+
+          {deal.stage !== "FECHADO_GANHO" && deal.stage !== "FECHADO_PERDIDO" && (
+            <Card>
+              <CardHeader>
+                <h2 className="font-display text-[1.1rem]">Fechar como Perdido</h2>
+              </CardHeader>
+              <CardBody>
+                <form action={advanceDealStage.bind(null, deal.id)} className="flex flex-col gap-4">
+                  <input type="hidden" name="nextStage" value="FECHADO_PERDIDO" />
+                  <FieldGroup label="Motivo de perda" htmlFor="lossReason">
+                    <Select id="lossReason" name="lossReason" defaultValue="" required>
+                      <option value="" disabled>
+                        Selecionar motivo
+                      </option>
+                      {Object.entries(LOSS_REASON_LABEL).map(([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
+                    </Select>
+                  </FieldGroup>
+                  <ConfirmSubmitButton confirmMessage={`Fechar "${deal.title}" como Fechado Perdido? Esta ação regista o motivo e (para "Sem resposta"/"Adiou projeto") agenda uma tarefa de reativação futura.`}>
+                    Fechar Negócio como Perdido
+                  </ConfirmSubmitButton>
+                </form>
+              </CardBody>
+            </Card>
+          )}
+        </div>
+      )}
     </div>
   );
 }
