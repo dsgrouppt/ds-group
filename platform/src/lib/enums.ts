@@ -106,12 +106,17 @@ export const DEAL_STAGE_LABEL: Record<DealStageValue, string> = {
   FECHADO_PERDIDO: "Fechado — Perdido",
 };
 
+// Ver docs/05_Processo_Comercial_Operacional_DS.md §1.8 e §7.3.
+// FORA_DE_AMBITO e OUTRO adicionados na Fase 1 da implementação do
+// processo comercial (ago/2026) — antes só existiam os 5 motivos abaixo.
 export const LOSS_REASON = {
   PRECO: "PRECO",
   PRAZO: "PRAZO",
   CONCORRENTE: "CONCORRENTE",
   ADIOU: "ADIOU",
   SEM_RESPOSTA: "SEM_RESPOSTA",
+  FORA_DE_AMBITO: "FORA_DE_AMBITO",
+  OUTRO: "OUTRO",
 } as const;
 export type LossReasonValue = (typeof LOSS_REASON)[keyof typeof LOSS_REASON];
 export const LOSS_REASON_LABEL: Record<LossReasonValue, string> = {
@@ -120,6 +125,38 @@ export const LOSS_REASON_LABEL: Record<LossReasonValue, string> = {
   CONCORRENTE: "Escolheu concorrente",
   ADIOU: "Adiou projeto",
   SEM_RESPOSTA: "Sem resposta",
+  FORA_DE_AMBITO: "Fora de âmbito",
+  OUTRO: "Outro",
+};
+
+// Motivos de perda que geram tarefa automática de reativação (doc 05 §1.8
+// e §7.2 — "sem resposta" ou "adiou projeto"). Os restantes motivos
+// (preço, prazo, concorrente, fora de âmbito, outro) não geram reativação
+// automática porque representam uma recusa mais definitiva ou fora do
+// nosso controlo comercial.
+// Nº de dias: SEM_RESPOSTA = 45 (doc 05 §2, explícito). ADIOU = 90 — doc 05
+// §1.8 só define um intervalo ("passados 3 a 6 meses"); assumimos o limite
+// inferior (90 dias) como primeiro contacto de reativação. Ver relatório da
+// Fase 2 — a confirmar/ajustar pelo Diogo se preferir outro valor dentro do
+// intervalo aprovado.
+export const REACTIVATION_DAYS: Partial<Record<LossReasonValue, number>> = {
+  SEM_RESPOSTA: 45,
+  ADIOU: 90,
+};
+
+// Categoria resultante do score de qualificação (doc 05 §3).
+export const QUALIFICATION_CATEGORY = {
+  FRACO: "FRACO",
+  POTENCIAL: "POTENCIAL",
+  QUALIFICADO: "QUALIFICADO",
+  PRIORITARIO: "PRIORITARIO",
+} as const;
+export type QualificationCategoryValue = (typeof QUALIFICATION_CATEGORY)[keyof typeof QUALIFICATION_CATEGORY];
+export const QUALIFICATION_CATEGORY_LABEL: Record<QualificationCategoryValue, string> = {
+  FRACO: "Fraco",
+  POTENCIAL: "Potencial",
+  QUALIFICADO: "Qualificado",
+  PRIORITARIO: "Prioritário",
 };
 
 // Ver docs/crm-especificacao.md §4 — Pipeline de Projeto
