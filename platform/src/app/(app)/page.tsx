@@ -7,7 +7,7 @@ import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/Badge";
-import { EVENT_TYPE_LABEL, TASK_STATUS_LABEL, LEAD_SOURCE_LABEL } from "@/lib/enums";
+import { EVENT_TYPE_LABEL, TASK_STATUS_LABEL, LEAD_SOURCE_LABEL, DEAL_STAGE_ORDER, DEAL_STAGE_LABEL } from "@/lib/enums";
 import { formatEuro } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -32,6 +32,12 @@ async function getDashboardData(role: RoleValue) {
     costedProjects,
     outstandingInvoices,
     leadsBySource,
+    totalDealsEverCount,
+    contactedDealCount,
+    contactTimingRows,
+    dealsByStage,
+    wonDealsForTiming,
+    wonStageLogs,
   ] = await Promise.all([
     showCrm ? prisma.deal.count({ where: { stage: { notIn: ["FECHADO_GANHO", "FECHADO_PERDIDO"] } } }) : Promise.resolve(0),
     showObras ? prisma.project.count({ where: { stage: { not: "ENTREGUE" } } }) : Promise.resolve(0),
@@ -78,6 +84,25 @@ async function getDashboardData(role: RoleValue) {
   })
       : Promise.resolve([]),
     showCrm ? prisma.deal.groupBy({ by: ["source"], _count: { source: true } }) : Promise.resolve([]),
+    // ── KPIs comerciais Fase 3 (doc 05 §8) ──────────────────────────────
+    showCrm ? prisma.deal.count() : Promise.resolve(0),
+    showCrm ? prisma.deal.count({ where: { firstContactedAt: { not: null } } }) : Promise.resolve(0),
+    showCrm
+      ? prisma.deal.findMany({ where: { firstContactedAt: { not: null } }, select: { createdAt: true, firstContactedAt: true } })
+      : Promise.resolve([]),
+    showCrm ? prisma.deal.groupBy({ by: ["stage"], _count: { stage: true } }) : Promise.resolve([]),
+    showCrm
+      ? prisma.deal.findMany({ where: { stage: "FECHADO_GANHO" }, select: { id: true, createdAt: true, amount: true } })
+      : Promise.resolve([]),
+    // Data de fecho real (Deal não tem closedAt — ver nota em crm/actions.ts
+    // sobre o uso de ActivityLog.meta="stage=FECHADO_GANHO" em vez de um
+    // novo campo de schema para esta métrica).
+    showCrm
+      ? prisma.activityLog.findMany({
+          where: { entity: "Deal", action: "STAGE_CHANGE", meta: "stage=FECHADO_GANHO" },
+          select: { entityId: true, createdAt: true },
+        })
+      : Promise.resolve([]),
   ]);
 
   const weightedPipeline = openDeals.reduce((sum, d) => sum + ((d.amount ?? 0) * d.probability) / 100, 0);
@@ -97,6 +122,56 @@ async function getDashboardData(role: RoleValue) {
 
   const totalLeads = leadsBySource.reduce((sum, row) => sum + row._count.source, 0);
 
+  // Taxa de contacto (doc 05 §8): leads com pelo menos 1 tentativa de
+  // contacto registada ÷ leads recebidos. Proxy: "contactado" = tem
+  // firstContactedAt preenchido — o histórico granular de tentativas
+  // (ActivityLog "CONTACT_ATTEMPT") ainda não foi construído (fora do
+  // âmbito das Fases 1-3, ver auditoria).
+  const contactRate = totalDealsEverCount > 0 ? (contactedDealCount / totalDealsEverCount) * 100 : null;
+
+  // Tempo médio até primeira resposta (doc 05 §8), em horas.
+  const responseHours = contactTimingRows
+    .filter((d) => d.firstContactedAt)
+    .map((d) => (d.firstContactedAt!.getTime() - d.createdAt.getTime()) / 3_600_000);
+  const avgResponseHours = responseHours.length > 0 ? responseHours.reduce((a, b) => a + b, 0) / responseHours.length : null;
+
+  // Conversão por etapa (doc 05 §8): distribuição atual dos negócios pelas
+  // 8 etapas do pipeline — não é um funil de coorte (não segue o mesmo
+  // conjunto de leads ao longo do tempo), é a fotografia atual do
+  // pipeline, tal como o painel "Leads por Origem" já existente.
+  const stageCountMap = new Map(dealsByStage.map((row) => [row.stage, row._count.stage]));
+  const stageBreakdown = DEAL_STAGE_ORDER.map((stage) => ({
+    stage,
+    label: DEAL_STAGE_LABEL[stage],
+    count: stageCountMap.get(stage) ?? 0,
+    pct: totalDealsEverCount > 0 ? Math.round(((stageCountMap.get(stage) ?? 0) / totalDealsEverCount) * 100) : 0,
+  }));
+
+  // Tempo médio até fecho (doc 05 §8), em dias: Fechado Ganho não tem um
+  // campo closedAt dedicado — usa-se a primeira vez que o ActivityLog
+  // registou a transição para "FECHADO_GANHO" (ver crm/actions.ts).
+  // Negócios ganhos sem esse log (ex.: dados anteriores a esta Fase 3) são
+  // ignorados no cálculo, não geram uma data inventada.
+  const firstWonLogByDeal = new Map<string, Date>();
+  for (const log of wonStageLogs) {
+    if (!log.entityId) continue;
+    const existing = firstWonLogByDeal.get(log.entityId);
+    if (!existing || log.createdAt < existing) firstWonLogByDeal.set(log.entityId, log.createdAt);
+  }
+  const closeDurationsDays = wonDealsForTiming
+    .map((d) => {
+      const closedAt = firstWonLogByDeal.get(d.id);
+      return closedAt ? (closedAt.getTime() - d.createdAt.getTime()) / 86_400_000 : null;
+    })
+    .filter((v): v is number => v !== null);
+  const avgCloseDays = closeDurationsDays.length > 0 ? closeDurationsDays.reduce((a, b) => a + b, 0) / closeDurationsDays.length : null;
+
+  // Ticket médio (doc 05 §8): valor proposto (Deal.amount) dos negócios
+  // Fechado Ganho — não existe um campo separado de "valor final acordado"
+  // no schema atual, ver nota da mesma limitação no doc 05 §7.1.
+  const wonAmounts = wonDealsForTiming.map((d) => d.amount).filter((v): v is number => v !== null && v !== undefined);
+  const avgTicket = wonAmounts.length > 0 ? wonAmounts.reduce((a, b) => a + b, 0) / wonAmounts.length : null;
+
   return {
     dealCount,
     activeProjectCount,
@@ -113,6 +188,12 @@ async function getDashboardData(role: RoleValue) {
     outstandingAmount,
     leadsBySource,
     totalLeads,
+    contactRate,
+    avgResponseHours,
+    stageBreakdown,
+    totalDealsEverCount,
+    avgCloseDays,
+    avgTicket,
     showCrm,
     showObras,
     showClientes,
@@ -184,6 +265,40 @@ export default async function DashboardPage() {
       </div>
       )}
 
+      {data.showCrm && (
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+        <StatCard
+          label="Taxa de Contacto"
+          value={data.contactRate !== null ? data.contactRate.toFixed(0) : null}
+          suffix={data.contactRate !== null ? "%" : undefined}
+          hint="Leads com 1ª tentativa de contacto registada ÷ leads recebidos"
+        />
+        <StatCard
+          label="Tempo Médio até Resposta"
+          value={
+            data.avgResponseHours !== null
+              ? data.avgResponseHours < 48
+                ? data.avgResponseHours.toFixed(1)
+                : (data.avgResponseHours / 24).toFixed(1)
+              : null
+          }
+          suffix={data.avgResponseHours !== null ? (data.avgResponseHours < 48 ? "h" : "d") : undefined}
+          hint="Da entrada do lead ao primeiro contacto efetivo"
+        />
+        <StatCard
+          label="Tempo Médio até Fecho"
+          value={data.avgCloseDays !== null ? Math.round(data.avgCloseDays) : null}
+          suffix={data.avgCloseDays !== null ? "dias" : undefined}
+          hint="De Novo Lead a Fechado — Ganho"
+        />
+        <StatCard
+          label="Ticket Médio"
+          value={data.avgTicket !== null ? formatEuro(data.avgTicket) : null}
+          hint="Valor proposto médio dos negócios Fechado — Ganho"
+        />
+      </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <Card>
           <CardHeader>
@@ -248,34 +363,58 @@ export default async function DashboardPage() {
       </div>
 
       {data.showCrm && (
-      <Card>
-        <CardHeader>
-          <h2 className="font-display text-[1.1rem]">Desempenho Comercial — Leads por Origem</h2>
-        </CardHeader>
-        <CardBody className="p-0">
-          {data.totalLeads === 0 ? (
-            <EmptyState title="Ainda sem negócios no CRM" description="A origem dos leads aparece aqui automaticamente." />
-          ) : (
-            <ul className="divide-y divide-mist-2">
-              {[...data.leadsBySource]
-                .sort((a, b) => b._count.source - a._count.source)
-                .map((row) => (
-                  <li key={row.source} className="px-6 py-3.5 flex items-center justify-between">
-                    <span className="text-sm">{LEAD_SOURCE_LABEL[row.source as keyof typeof LEAD_SOURCE_LABEL]}</span>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <h2 className="font-display text-[1.1rem]">Desempenho Comercial — Leads por Origem</h2>
+          </CardHeader>
+          <CardBody className="p-0">
+            {data.totalLeads === 0 ? (
+              <EmptyState title="Ainda sem negócios no CRM" description="A origem dos leads aparece aqui automaticamente." />
+            ) : (
+              <ul className="divide-y divide-mist-2">
+                {[...data.leadsBySource]
+                  .sort((a, b) => b._count.source - a._count.source)
+                  .map((row) => (
+                    <li key={row.source} className="px-6 py-3.5 flex items-center justify-between">
+                      <span className="text-sm">{LEAD_SOURCE_LABEL[row.source as keyof typeof LEAD_SOURCE_LABEL]}</span>
+                      <span className="text-sm font-medium">
+                        {row._count.source} · {Math.round((row._count.source / data.totalLeads) * 100)}%
+                      </span>
+                    </li>
+                  ))}
+              </ul>
+            )}
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <h2 className="font-display text-[1.1rem]">Conversão por Etapa</h2>
+          </CardHeader>
+          <CardBody className="p-0">
+            {data.totalDealsEverCount === 0 ? (
+              <EmptyState title="Ainda sem negócios no CRM" description="A distribuição por etapa aparece aqui automaticamente." />
+            ) : (
+              <ul className="divide-y divide-mist-2">
+                {data.stageBreakdown.map((row) => (
+                  <li key={row.stage} className="px-6 py-3.5 flex items-center justify-between">
+                    <span className="text-sm">{row.label}</span>
                     <span className="text-sm font-medium">
-                      {row._count.source} · {Math.round((row._count.source / data.totalLeads) * 100)}%
+                      {row.count} · {row.pct}%
                     </span>
                   </li>
                 ))}
-            </ul>
-          )}
-        </CardBody>
-      </Card>
+              </ul>
+            )}
+          </CardBody>
+        </Card>
+      </div>
       )}
 
       <p className="text-xs text-graphite-light mt-8">
-        Indicadores adicionais (NPS pós-obra, taxa de reincidência, tempo médio de resposta a lead) entram quando
-        houver volume de dados real — ver docs/crm-especificacao.md §7.
+        Indicadores adicionais (NPS pós-obra, taxa de reincidência, taxa de contacto por origem/comercial) entram
+        quando houver volume de dados real e filtros de período — ver docs/05_Processo_Comercial_Operacional_DS.md §7.5/§8.
       </p>
     </div>
   );
