@@ -23,11 +23,23 @@ export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
   return <select {...props} className={`${FIELD_CLASS} ${props.className ?? ""}`} />;
 }
 
-export function FieldGroup({ label, htmlFor, children }: { label: string; htmlFor: string; children: React.ReactNode }) {
+export function FieldGroup({
+  label,
+  htmlFor,
+  hint,
+  children,
+}: {
+  label: string;
+  htmlFor: string;
+  /** Texto de apoio opcional, mostrado por baixo do campo (ex.: valores de referência de uma decisão de negócio aprovada). */
+  hint?: string;
+  children: React.ReactNode;
+}) {
   return (
     <div>
       <Label htmlFor={htmlFor}>{label}</Label>
       {children}
+      {hint && <p className="mt-1 text-xs text-graphite-light">{hint}</p>}
     </div>
   );
 }
