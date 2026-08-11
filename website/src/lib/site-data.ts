@@ -30,6 +30,19 @@ export const siteConfig = {
   locations: ["Lisboa", "Porto", "Cascais", "Oeiras", "Sintra", "Vila Nova de Gaia", "Matosinhos", "Almada"],
 };
 
+/**
+ * Media da Hero — fica vazio (mostra o tratamento gráfico elegante atual)
+ * até existir vídeo/fotografia real de obra para usar de fundo. Preencher
+ * um dos dois campos (nunca os dois — o vídeo tem sempre prioridade sobre
+ * a fotografia se ambos estiverem definidos) ativa automaticamente o novo
+ * fundo, sem alterar `Hero.tsx`.
+ */
+export const heroMedia: { videoUrl?: string; image?: string; imageAlt?: string } = {
+  videoUrl: undefined,
+  image: undefined,
+  imageAlt: undefined,
+};
+
 export const services: Service[] = [
   {
     slug: "remodelacoes-residenciais",
@@ -48,6 +61,7 @@ export const services: Service[] = [
       "Reporte semanal estruturado",
       "Vistoria final e dossier de garantia",
     ],
+    relatedFaqCategories: ["Processo", "Prazos e Orçamento"],
   },
   {
     slug: "remodelacoes-premium",
@@ -66,6 +80,7 @@ export const services: Service[] = [
       "Gestor de projeto sénior dedicado",
       "Acompanhamento de design de interiores, quando aplicável",
     ],
+    relatedFaqCategories: ["Processo", "Garantia"],
   },
   {
     slug: "cozinhas",
@@ -84,6 +99,7 @@ export const services: Service[] = [
       "Mobiliário e bancada à medida",
       "Instalação de eletrodomésticos integrados",
     ],
+    relatedFaqCategories: ["Processo", "Garantia"],
   },
   {
     slug: "casas-de-banho",
@@ -102,6 +118,7 @@ export const services: Service[] = [
       "Escolha de revestimentos duráveis",
       "Ventilação adequada contra humidade",
     ],
+    relatedFaqCategories: ["Garantia", "Processo"],
   },
   {
     slug: "moradias",
@@ -120,6 +137,7 @@ export const services: Service[] = [
       "Planeamento de fases dependentes",
       "Reporte semanal consolidado",
     ],
+    relatedFaqCategories: ["Prazos e Orçamento", "Processo"],
   },
   {
     slug: "espacos-comerciais",
@@ -138,6 +156,7 @@ export const services: Service[] = [
       "Prazos com penalização contratual reforçada",
       "Reporte adaptado à gestão do negócio do cliente",
     ],
+    relatedFaqCategories: ["Prazos e Orçamento", "Investidores"],
   },
 ];
 

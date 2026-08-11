@@ -122,3 +122,30 @@ export function faqJsonLd(items: { question: string; answer: string }[]) {
     })),
   };
 }
+
+/** JSON-LD de estudo de caso/obra — incluído em cada página /portfolio/[slug]. */
+export function caseStudyJsonLd(input: {
+  title: string;
+  description: string;
+  url: string;
+  imageUrls: string[];
+  datePublished?: string;
+}) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "CreativeWork",
+    name: input.title,
+    description: input.description,
+    url: input.url,
+    ...(input.imageUrls.length > 0 ? { image: input.imageUrls } : {}),
+    ...(input.datePublished ? { datePublished: input.datePublished } : {}),
+    author: {
+      "@type": "Organization",
+      name: siteConfig.name,
+    },
+    publisher: {
+      "@type": "Organization",
+      name: siteConfig.name,
+    },
+  };
+}

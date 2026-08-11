@@ -85,3 +85,16 @@ export function getFaqByCategory() {
     items: faqItems.filter((f) => f.category === category),
   }));
 }
+
+/**
+ * Seleciona as perguntas mais relevantes para um serviço a partir das
+ * categorias definidas em `service.relatedFaqCategories` (site-data.ts) —
+ * evita mostrar sempre o mesmo bloco fixo de perguntas em todas as páginas
+ * de serviço (mau para SEO — conteúdo duplicado — e para o visitante).
+ * Usada tanto no render (`ServiceDetail.tsx`) como no JSON-LD
+ * (`servicos/[slug]/page.tsx`) — uma só fonte de verdade para os dois.
+ */
+export function getFaqForService(categories: FaqItem["category"][] | undefined, limit = 4): FaqItem[] {
+  const cats = categories && categories.length > 0 ? categories : (["Processo", "Prazos e Orçamento"] as FaqItem["category"][]);
+  return faqItems.filter((f) => cats.includes(f.category)).slice(0, limit);
+}

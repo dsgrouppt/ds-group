@@ -4,7 +4,7 @@ import { DataStrip } from "@/components/sections/DataStrip";
 import { Services } from "@/components/sections/Services";
 import { Manifesto } from "@/components/sections/Manifesto";
 import { Method } from "@/components/sections/Method";
-import { ProjectsGrid } from "@/components/sections/ProjectsGrid";
+import { PortfolioGrid } from "@/components/sections/PortfolioGrid";
 import { VideoTestimonials } from "@/components/sections/VideoTestimonials";
 import { Timeline } from "@/components/sections/Timeline";
 import { Team } from "@/components/sections/Team";
@@ -14,6 +14,7 @@ import { FinalCTA } from "@/components/sections/FinalCTA";
 import { Reveal } from "@/components/ui/Reveal";
 import { LinkArrow } from "@/components/ui/LinkArrow";
 import { getProjectsByCategory } from "@/lib/site-data";
+import { getFeaturedCaseStudies } from "@/lib/portfolio";
 import { buildMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = buildMetadata({
@@ -25,6 +26,7 @@ export const metadata: Metadata = buildMetadata({
 
 export default function HomePage() {
   const teaserProjects = getProjectsByCategory(undefined, 4);
+  const featuredCaseStudies = getFeaturedCaseStudies(4);
 
   return (
     <>
@@ -44,7 +46,7 @@ export default function HomePage() {
             </Reveal>
             <LinkArrow href="/portfolio">Ver portefólio completo</LinkArrow>
           </div>
-          <ProjectsGrid items={teaserProjects} />
+          <PortfolioGrid caseStudies={featuredCaseStudies} fallbackProjects={teaserProjects} minCards={4} />
         </div>
       </section>
 

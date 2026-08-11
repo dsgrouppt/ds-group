@@ -1,0 +1,45 @@
+{
+  "slug": "_MODELO",
+  "title": "Título institucional — ex: Remodelação Residencial — Lisboa (nunca o nome do cliente)",
+  "category": "residencial",
+  "servicesRealized": ["remodelacoes-residenciais"],
+  "location": "Concelho ou zona genérica — nunca a morada",
+  "duration": "ex: 10 semanas (só preencher se for verdade — omitir se não souberes)",
+  "materials": ["ex: Pavimento vinílico", "ex: Torneiras XYZ"],
+  "challenge": "Um parágrafo: qual era o problema/desafio do espaço antes da obra.",
+  "planning": "Um parágrafo: como foi pensado o projeto antes de arrancar.",
+  "execution": "Um parágrafo: como decorreu a execução, fases relevantes.",
+  "solution": "Um parágrafo: que decisão técnica resolveu o desafio inicial.",
+  "result": "Um parágrafo: o resultado final, em termos concretos e verificáveis.",
+  "summary": "1-2 frases curtas para o cartão na listagem do portefólio.",
+  "status": "draft",
+  "featured": false,
+  "publishedAt": "2026-01-01",
+  "cover": {
+    "id": "capa",
+    "kind": "foto",
+    "src": "capa.jpg",
+    "alt": "Descreve a imagem para acessibilidade e SEO — nunca deixar vazio.",
+    "phase": "depois",
+    "tags": ["obra-completa"]
+  },
+  "gallery": [
+    {
+      "id": "g1",
+      "kind": "foto",
+      "src": "galeria/01.jpg",
+      "alt": "Descreve a imagem.",
+      "phase": "depois",
+      "tags": ["cozinha"]
+    }
+  ],
+  "videos": [
+    {
+      "id": "v1",
+      "kind": "video",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/SUBSTITUIR_PELO_ID_DO_VIDEO",
+      "orientation": "horizontal",
+      "alt": "Descrição curta do vídeo."
+    }
+  ]
+}

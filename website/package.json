@@ -2,13 +2,14 @@
   "name": "ds-projects-website",
   "version": "1.0.0",
   "private": true,
-  "description": "Website institucional da DS Projects (empresa DS Group) — Next.js 14, App Router, TypeScript, Tailwind CSS.",
+  "description": "Website institucional da DS Projects (empresa DS Group) \u2014 Next.js 14, App Router, TypeScript, Tailwind CSS.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "audit-media": "node scripts/audit-media.mjs"
   },
   "dependencies": {
     "framer-motion": "11.3.19",

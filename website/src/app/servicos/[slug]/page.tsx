@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ServiceDetail } from "@/components/sections/ServiceDetail";
 import { services, getServiceBySlug, siteConfig } from "@/lib/site-data";
-import { faqItems } from "@/lib/faq-data";
+import { getFaqForService } from "@/lib/faq-data";
 import { buildMetadata, serviceJsonLd, breadcrumbJsonLd, faqJsonLd } from "@/lib/seo";
 import { JsonLd } from "@/components/JsonLd";
 
@@ -42,10 +42,7 @@ export default function ServicePage({ params }: ServicePageProps) {
   ]);
 
   const faq = faqJsonLd(
-    faqItems
-      .filter((f) => f.category === "Processo" || f.category === "Prazos e Orçamento")
-      .slice(0, 4)
-      .map(({ question, answer }) => ({ question, answer }))
+    getFaqForService(service.relatedFaqCategories).map(({ question, answer }) => ({ question, answer }))
   );
 
   return (

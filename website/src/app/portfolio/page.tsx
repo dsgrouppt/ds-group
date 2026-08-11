@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import { PlaceholderMedia } from "@/components/ui/PlaceholderMedia";
-import { ProjectsGrid } from "@/components/sections/ProjectsGrid";
+import { PortfolioGrid } from "@/components/sections/PortfolioGrid";
 import { FinalCTA } from "@/components/sections/FinalCTA";
-import { projects } from "@/lib/site-data";
-import { buildMetadata } from "@/lib/seo";
+import { projects, siteConfig } from "@/lib/site-data";
+import { getPublishedCaseStudies } from "@/lib/portfolio";
+import { buildMetadata, breadcrumbJsonLd } from "@/lib/seo";
+import { JsonLd } from "@/components/JsonLd";
 
 export const metadata: Metadata = buildMetadata({
   title: "Portefólio",
@@ -17,8 +19,15 @@ interface PortfolioPageProps {
 }
 
 export default function PortfolioPage({ searchParams }: PortfolioPageProps) {
+  const caseStudies = getPublishedCaseStudies();
+  const breadcrumb = breadcrumbJsonLd([
+    { name: "Início", url: siteConfig.url },
+    { name: "Portefólio", url: `${siteConfig.url}/portfolio` },
+  ]);
+
   return (
     <>
+      <JsonLd schemas={[breadcrumb]} />
       <section className="hero inner">
         <div className="hero-media">
           <PlaceholderMedia
@@ -37,7 +46,14 @@ export default function PortfolioPage({ searchParams }: PortfolioPageProps) {
 
       <section className="pt-24 pb-36 bg-white">
         <div className="container">
-          <ProjectsGrid items={projects} showFilters dense initialCategory={searchParams.categoria ?? "all"} />
+          <PortfolioGrid
+            caseStudies={caseStudies}
+            fallbackProjects={projects}
+            showFilters
+            dense
+            minCards={12}
+            initialCategory={searchParams.categoria ?? "all"}
+          />
         </div>
       </section>
 

@@ -57,7 +57,6 @@ export default function LocalAreaPage({ params }: LocalPageProps) {
         <div className="hero-media">
           <PlaceholderMedia
             variant="dark"
-            caption={`Projeto em ${area.name}`}
             className="absolute inset-0"
             priority
           />
@@ -94,7 +93,6 @@ export default function LocalAreaPage({ params }: LocalPageProps) {
           <Reveal index={1} className="relative aspect-[4/5]">
             <PlaceholderMedia
               variant="light"
-              caption={`${area.name} — projeto concluído`}
               className="absolute inset-0"
             />
           </Reveal>

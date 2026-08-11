@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { services, siteConfig } from "@/lib/site-data";
 import { localAreas } from "@/lib/local-seo-data";
 import { blogPosts } from "@/lib/blog-data";
+import { getPublishedCaseStudies } from "@/lib/portfolio";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const staticRoutes: MetadataRoute.Sitemap = [
@@ -32,5 +33,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.5,
   }));
 
-  return [...staticRoutes, ...serviceRoutes, ...localRoutes, ...blogRoutes];
+  const caseStudyRoutes: MetadataRoute.Sitemap = getPublishedCaseStudies().map((c) => ({
+    url: `${siteConfig.url}/portfolio/${c.slug}`,
+    changeFrequency: "monthly",
+    priority: 0.75,
+    ...(c.publishedAt ? { lastModified: new Date(c.publishedAt) } : {}),
+  }));
+
+  return [...staticRoutes, ...serviceRoutes, ...localRoutes, ...blogRoutes, ...caseStudyRoutes];
 }

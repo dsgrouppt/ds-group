@@ -1,15 +1,17 @@
 import Link from "next/link";
 import type { Service } from "@/types";
 import { getProjectsByCategory, getRelatedServices } from "@/lib/site-data";
+import { getCaseStudiesByService } from "@/lib/portfolio";
 import { Reveal } from "@/components/ui/Reveal";
 import { PlaceholderMedia } from "@/components/ui/PlaceholderMedia";
-import { ProjectsGrid } from "@/components/sections/ProjectsGrid";
+import { PortfolioGrid } from "@/components/sections/PortfolioGrid";
 import { FinalCTA } from "@/components/sections/FinalCTA";
-import { faqItems } from "@/lib/faq-data";
+import { getFaqForService } from "@/lib/faq-data";
 
 export function ServiceDetail({ service }: { service: Service }) {
   const related = getRelatedServices(service.slug, 3);
   const projects = getProjectsByCategory(service.category, 2);
+  const caseStudies = getCaseStudiesByService(service.slug, 2);
 
   return (
     <>
@@ -17,7 +19,6 @@ export function ServiceDetail({ service }: { service: Service }) {
         <div className="hero-media">
           <PlaceholderMedia
             variant="dark"
-            caption={`${service.title} — imagem de capa`}
             className="absolute inset-0"
             priority
           />
@@ -54,14 +55,26 @@ export function ServiceDetail({ service }: { service: Service }) {
           </Reveal>
 
           <Reveal index={1} className="relative aspect-[4/5]">
-            <PlaceholderMedia
-              variant="light"
-              caption={`${service.title} — projeto concluído`}
-              className="absolute inset-0"
-            />
+            <PlaceholderMedia variant="light" className="absolute inset-0" />
           </Reveal>
         </div>
       </section>
+
+      {service.videoEmbedUrl && (
+        <section className="pb-36 bg-white">
+          <div className="container">
+            <div className="relative aspect-video max-w-[900px] mx-auto">
+              <iframe
+                src={service.videoEmbedUrl}
+                title={`Vídeo — ${service.title}`}
+                className="absolute inset-0 h-full w-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+          </div>
+        </section>
+      )}
 
       <section className="py-36 pt-0 bg-white">
         <div className="container">
@@ -73,7 +86,7 @@ export function ServiceDetail({ service }: { service: Service }) {
               <span className="bar" /> Ver no portefólio completo
             </Link>
           </div>
-          <ProjectsGrid items={projects} />
+          <PortfolioGrid caseStudies={caseStudies} fallbackProjects={projects} minCards={2} />
         </div>
       </section>
 
@@ -108,10 +121,7 @@ export function ServiceDetail({ service }: { service: Service }) {
             </Link>
           </div>
           <div className="flex flex-col">
-            {faqItems
-              .filter((f) => f.category === "Processo" || f.category === "Prazos e Orçamento")
-              .slice(0, 4)
-              .map((item, i) => (
+            {getFaqForService(service.relatedFaqCategories).map((item, i) => (
                 <Reveal
                   key={item.question}
                   index={i}

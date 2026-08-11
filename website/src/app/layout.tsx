@@ -69,6 +69,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="pt-PT" className={`${fraunces.variable} ${inter.variable}`}>
       <head>
+        {/* Preconnect aos domínios de vídeo — os embeds do YouTube/Vimeo (testemunhos,
+            estudos de caso) só entram quando houver conteúdo real, mas isto adianta a
+            ligação TLS assim que a página carrega, sem custo relevante quando não há
+            vídeo nenhum na página. */}
+        <link rel="preconnect" href="https://www.youtube-nocookie.com" />
+        <link rel="preconnect" href="https://i.ytimg.com" />
+        <link rel="preconnect" href="https://player.vimeo.com" />
         <script
           type="application/ld+json"
           // eslint-disable-next-line react/no-danger
