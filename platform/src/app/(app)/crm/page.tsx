@@ -74,7 +74,11 @@ export default async function CrmPage({ searchParams }: { searchParams?: { page?
                 <tbody>
                   {deals.map((deal) => {
                     const currentIndex = DEAL_STAGE_ORDER.indexOf(deal.stage as (typeof DEAL_STAGE_ORDER)[number]);
-                    const nextStage = DEAL_STAGE_ORDER[currentIndex + 1];
+                    // "FECHADO_PERDIDO" nunca é sugerido como avanço linear
+                    // automático (exige motivo de perda — ver botão dedicado
+                    // "Fechar como Perdido" na ficha do negócio).
+                    const nextCandidate = DEAL_STAGE_ORDER[currentIndex + 1];
+                    const nextStage = nextCandidate === "FECHADO_PERDIDO" ? undefined : nextCandidate;
                     return (
                       <Tr key={deal.id}>
                         <Td className="font-medium">
