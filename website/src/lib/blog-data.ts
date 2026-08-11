@@ -6,6 +6,12 @@ export interface BlogPost {
   readTime: string;
   publishedAt: string; // ISO date
   body: { heading?: string; paragraphs: string[]; list?: string[] }[];
+  /**
+   * Slugs de `services` (ver `site-data.ts`) tematicamente relevantes para
+   * este artigo — usados para o bloco "Serviço relacionado" no fim do post
+   * e para o inverso (artigos relacionados numa página de serviço).
+   */
+  relatedServiceSlugs?: string[];
 }
 
 /**
@@ -17,6 +23,7 @@ export interface BlogPost {
 export const blogPosts: BlogPost[] = [
   {
     slug: "quanto-tempo-demora-uma-remodelacao",
+    relatedServiceSlugs: ["remodelacoes-residenciais", "remodelacoes-premium"],
     title: "Quanto tempo demora uma remodelação? Um guia realista por tipo de projeto",
     excerpt:
       "Prazos genéricos de \"6 a 8 semanas\" raramente sobrevivem ao contacto com a realidade. Como calcular um calendário credível antes de começar.",
@@ -55,6 +62,7 @@ export const blogPosts: BlogPost[] = [
   },
   {
     slug: "o-que-significa-remodelacao-chave-na-mao",
+    relatedServiceSlugs: ["remodelacoes-residenciais", "remodelacoes-premium"],
     title: "O que significa \"remodelação chave na mão\" — e quando vale a pena",
     excerpt:
       "O termo aparece em quase todos os sites do setor, mas nem sempre quer dizer a mesma coisa. Como identificar um serviço chave na mão real.",
@@ -89,6 +97,7 @@ export const blogPosts: BlogPost[] = [
   },
   {
     slug: "como-escolher-empresa-de-remodelacao",
+    relatedServiceSlugs: ["remodelacoes-residenciais", "moradias"],
     title: "Como escolher uma empresa de remodelação: 7 perguntas antes de assinar",
     excerpt:
       "Antes de comparar preços, compare processo. Estas são as perguntas que revelam se uma empresa tem, de facto, um método.",
@@ -124,6 +133,7 @@ export const blogPosts: BlogPost[] = [
   },
   {
     slug: "remodelar-para-investimento-o-que-avaliar",
+    relatedServiceSlugs: ["espacos-comerciais", "moradias"],
     title: "Remodelar para investimento: o que muda quando o objetivo é rentabilizar, não habitar",
     excerpt:
       "Um investidor imobiliário tem critérios diferentes de um proprietário. Como pensar uma remodelação orientada a retorno.",
@@ -155,6 +165,7 @@ export const blogPosts: BlogPost[] = [
   },
   {
     slug: "erros-comuns-remodelacao-cozinha",
+    relatedServiceSlugs: ["cozinhas"],
     title: "5 erros comuns em remodelações de cozinha (e como evitá-los)",
     excerpt:
       "A cozinha é o espaço mais técnico de uma casa. Estes são os erros que mais frequentemente obrigam a retrabalho.",
@@ -182,6 +193,7 @@ export const blogPosts: BlogPost[] = [
   },
   {
     slug: "checklist-antes-de-remodelar-casa-de-banho",
+    relatedServiceSlugs: ["casas-de-banho"],
     title: "Checklist antes de remodelar uma casa de banho",
     excerpt:
       "Impermeabilização mal feita é o erro mais caro de corrigir depois de a obra terminar. O que verificar antes de avançar.",
@@ -216,4 +228,21 @@ export const blogPosts: BlogPost[] = [
 
 export function getBlogPostBySlug(slug: string): BlogPost | undefined {
   return blogPosts.find((p) => p.slug === slug);
+}
+
+/** Artigos de blog relevantes para uma página de serviço (inverso de relatedServiceSlugs). */
+export function getBlogPostsForService(serviceSlug: string, limit = 2): BlogPost[] {
+  return blogPosts.filter((p) => p.relatedServiceSlugs?.includes(serviceSlug)).slice(0, limit);
+}
+
+/** Artigos relacionados: primeiro por categoria partilhada, depois preenche com os mais recentes. */
+export function getRelatedBlogPosts(slug: string, limit = 2): BlogPost[] {
+  const current = getBlogPostBySlug(slug);
+  if (!current) return [];
+  const others = blogPosts.filter((p) => p.slug !== slug);
+  const sameCategory = others.filter((p) => p.category === current.category);
+  const rest = others.filter((p) => p.category !== current.category);
+  return [...sameCategory, ...rest]
+    .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt))
+    .slice(0, limit);
 }

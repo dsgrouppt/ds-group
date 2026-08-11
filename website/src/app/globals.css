@@ -279,3 +279,29 @@ header.site-header.scrolled{
 
 .wizard-nav{display:flex;justify-content:space-between;align-items:center;margin-top:2.8rem;padding-top:2rem;border-top:1px solid #e2e2df;}
 .wizard-success{background:var(--white);border:1px solid #e2e2df;padding:4rem 2.6rem;max-width:760px;margin:0 auto;text-align:left;}
+
+/* ===== BARRA DE CONTACTO FIXA (MOBILE) ===== */
+/* Só existe visualmente abaixo dos 980px — em desktop o contacto já está
+   sempre visível no cabeçalho, pelo que duplicar a barra seria ruído. */
+.mobile-contact-bar{
+  display:none;
+}
+@media (max-width:980px){
+  .mobile-contact-bar{
+    display:flex;position:fixed;left:0;right:0;bottom:0;z-index:950;
+    background:var(--black);border-top:1px solid rgba(255,255,255,.1);
+    padding:.55rem max(.9rem,env(safe-area-inset-left)) calc(.55rem + env(safe-area-inset-bottom)) max(.9rem,env(safe-area-inset-right));
+    gap:.7rem;
+  }
+  /* Evita que o rodapé/CTA final fiquem escondidos atrás da barra fixa. */
+  body{padding-bottom:56px;}
+}
+.mobile-contact-btn{
+  flex:1;display:flex;align-items:center;justify-content:center;gap:.5rem;
+  padding:.75rem .8rem;font-size:.78rem;letter-spacing:.04em;font-weight:500;
+  color:var(--white);border:1px solid rgba(255,255,255,.25);border-radius:2px;
+  transition:background .3s var(--ease),border-color .3s var(--ease);
+}
+.mobile-contact-btn:active{background:rgba(255,255,255,.08);}
+.mobile-contact-btn.whatsapp{background:#25d366;border-color:#25d366;color:#0a0a0a;}
+.mobile-contact-btn.whatsapp:active{background:#1fbd5a;}

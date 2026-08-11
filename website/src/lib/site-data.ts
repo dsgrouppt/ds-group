@@ -27,6 +27,13 @@ export const siteConfig = {
   phoneDisplay: "+351 933 356 479",
   phoneAlt: "+351928241691",
   phoneAltDisplay: "+351 928 241 691",
+  // Mesmo número principal, em formato wa.me (sem "+", sem espaços) e com uma
+  // mensagem pré-preenchida neutra — usado no botão de WhatsApp do rodapé e
+  // na barra de contacto fixa em mobile.
+  whatsapp: "351933356479",
+  whatsappUrl:
+    "https://wa.me/351933356479?text=" +
+    encodeURIComponent("Olá, gostaria de falar sobre um projeto de remodelação."),
   locations: ["Lisboa", "Porto", "Cascais", "Oeiras", "Sintra", "Vila Nova de Gaia", "Matosinhos", "Almada"],
 };
 

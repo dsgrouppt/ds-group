@@ -7,11 +7,14 @@ import { PlaceholderMedia } from "@/components/ui/PlaceholderMedia";
 import { PortfolioGrid } from "@/components/sections/PortfolioGrid";
 import { FinalCTA } from "@/components/sections/FinalCTA";
 import { getFaqForService } from "@/lib/faq-data";
+import { getBlogPostsForService } from "@/lib/blog-data";
+import { formatLongDate } from "@/lib/utils";
 
 export function ServiceDetail({ service }: { service: Service }) {
   const related = getRelatedServices(service.slug, 3);
   const projects = getProjectsByCategory(service.category, 2);
   const caseStudies = getCaseStudiesByService(service.slug, 2);
+  const relatedPosts = getBlogPostsForService(service.slug, 2);
 
   return (
     <>
@@ -137,6 +140,28 @@ export function ServiceDetail({ service }: { service: Service }) {
           </div>
         </div>
       </section>
+
+      {relatedPosts.length > 0 && (
+        <section className="py-24 pb-36 bg-paper">
+          <div className="container max-w-[900px] mx-auto">
+            <h3 className="font-display font-normal text-[1.6rem] mb-10">Artigos relacionados</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {relatedPosts.map((post) => (
+                <Link key={post.slug} href={`/blog/${post.slug}`} className="service-card block h-full">
+                  <div className="text-[.7rem] tracking-[.14em] uppercase text-[var(--gold-text)] mb-3">
+                    {post.category} · {formatLongDate(post.publishedAt)}
+                  </div>
+                  <h3>{post.title}</h3>
+                  <p>{post.excerpt}</p>
+                  <span className="link-arrow">
+                    <span className="bar" /> Ler artigo
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       <FinalCTA
         heading={`Vamos falar sobre o seu projeto de ${service.title.toLowerCase()}.`}

@@ -3,6 +3,7 @@ import { Fraunces, Inter } from "next/font/google";
 import { Suspense } from "react";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
+import { MobileContactBar } from "@/components/layout/MobileContactBar";
 import { CustomCursor } from "@/components/layout/CustomCursor";
 import {
   GoogleTagManagerScript,
@@ -96,6 +97,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {children}
         </main>
         <Footer />
+        <MobileContactBar />
         <GoogleTagManagerScript />
         <GoogleAnalyticsScript />
         <MetaPixelScript />

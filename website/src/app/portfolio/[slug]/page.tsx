@@ -14,6 +14,7 @@ import { PlaceholderMedia } from "@/components/ui/PlaceholderMedia";
 import { Gallery } from "@/components/sections/Gallery";
 import { BeforeAfter } from "@/components/sections/BeforeAfter";
 import { FinalCTA } from "@/components/sections/FinalCTA";
+import { getTestimonialsForCaseStudy } from "@/lib/testimonials-data";
 
 interface CaseStudyPageProps {
   params: { slug: string };
@@ -54,6 +55,7 @@ export default function CaseStudyPage({ params }: CaseStudyPageProps) {
   const before = caseStudy.gallery.find((m) => m.phase === "antes");
   const after = caseStudy.gallery.find((m) => m.phase === "depois") ?? caseStudy.cover;
   const galleryAndVideos = [...caseStudy.gallery, ...(caseStudy.videos ?? [])];
+  const testimonials = getTestimonialsForCaseStudy(caseStudy.slug);
 
   const breadcrumb = breadcrumbJsonLd([
     { name: "Início", url: siteConfig.url },
@@ -164,6 +166,31 @@ export default function CaseStudyPage({ params }: CaseStudyPageProps) {
           <Gallery items={galleryAndVideos} showFilters dense />
         </div>
       </section>
+
+      {testimonials.length > 0 && (
+        <section className="py-24 bg-black text-white">
+          <div className="container max-w-[720px] mx-auto text-center">
+            <div className="eyebrow-dark justify-center flex mb-6">Testemunho do Cliente</div>
+            {testimonials.map((t) => (
+              <div key={t.id} className="mb-10 last:mb-0">
+                {t.rating && (
+                  <div className="text-[var(--gold-text)] text-[.9rem] mb-4" aria-label={`${t.rating} de 5 estrelas`}>
+                    {"★".repeat(t.rating)}
+                    {"☆".repeat(5 - t.rating)}
+                  </div>
+                )}
+                {t.quote && (
+                  <p className="font-display font-normal italic text-[clamp(1.2rem,2vw,1.5rem)] leading-[1.5] mb-5">
+                    &ldquo;{t.quote}&rdquo;
+                  </p>
+                )}
+                <b className="font-display font-medium text-[1rem] block">{t.clientName}</b>
+                {t.location && <span className="text-[.8rem] text-[#c9c9c8]">{t.location}</span>}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {related.length > 0 && (
         <section className="py-24 pb-36 bg-white">

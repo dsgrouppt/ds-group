@@ -1,0 +1,13 @@
+{
+  "_comentario": "Pasta-modelo — nunca publicada (nome começa por '_', ver README nesta pasta e lib/testimonials-data.ts). Copia esta pasta, renomeia sem o '_' para um id curto (ex.: 'cliente-lisboa-01'), preenche os campos reais e muda authorized para true só depois de teres autorização explícita do cliente.",
+  "id": "_MODELO",
+  "kind": "texto",
+  "clientName": "Nome real do cliente, com autorização explícita para divulgação",
+  "location": "Concelho ou zona genérica (nunca a morada exata)",
+  "quote": "Citação real do cliente, tal como foi dita ou escrita — nunca parafraseada de forma a soar diferente do que a pessoa disse.",
+  "rating": 5,
+  "relatedCaseStudySlug": "slug-da-obra-correspondente-em-content-obras--opcional",
+  "photo": "/media/testemunhos/exemplo.jpg (opcional — caminho da fotografia real do cliente, com autorização)",
+  "embedUrl": "https://www.youtube-nocookie.com/embed/ID-DO-VIDEO (opcional — só se kind for 'video')",
+  "authorized": false
+}

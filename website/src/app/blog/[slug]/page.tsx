@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { blogPosts, getBlogPostBySlug } from "@/lib/blog-data";
+import { blogPosts, getBlogPostBySlug, getRelatedBlogPosts } from "@/lib/blog-data";
+import { getServiceBySlug } from "@/lib/site-data";
 import { buildMetadata, breadcrumbJsonLd, articleJsonLd } from "@/lib/seo";
 import { siteConfig } from "@/lib/site-data";
 import { formatLongDate } from "@/lib/utils";
@@ -31,7 +32,10 @@ export default function BlogPostPage({ params }: BlogPostPageProps) {
   const post = getBlogPostBySlug(params.slug);
   if (!post) notFound();
 
-  const related = blogPosts.filter((p) => p.slug !== post.slug).slice(0, 2);
+  const related = getRelatedBlogPosts(post.slug, 2);
+  const relatedServices = (post.relatedServiceSlugs ?? [])
+    .map((s) => getServiceBySlug(s))
+    .filter((s): s is NonNullable<typeof s> => Boolean(s));
 
   const jsonLd = articleJsonLd({
     title: post.title,
@@ -92,7 +96,21 @@ export default function BlogPostPage({ params }: BlogPostPageProps) {
             </div>
           ))}
 
-          <div className="mt-16 pt-10 border-t border-black/[.08]">
+          <div className="mt-16 pt-10 border-t border-black/[.08] flex flex-col gap-4">
+            {relatedServices.length > 0 && (
+              <p className="text-graphite font-light text-[.95rem]">
+                Este tema está diretamente relacionado com{" "}
+                {relatedServices.map((s, i) => (
+                  <span key={s.slug}>
+                    <Link href={`/servicos/${s.slug}`} className="underline hover:no-underline">
+                      {s.title}
+                    </Link>
+                    {i < relatedServices.length - 1 ? " e " : ""}
+                  </span>
+                ))}
+                .
+              </p>
+            )}
             <Link href="/faq" className="link-arrow">
               <span className="bar" /> Ver todas as Perguntas Frequentes
             </Link>
