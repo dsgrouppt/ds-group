@@ -77,6 +77,25 @@ O que já está implementado e escrito (código completo, validado com `prisma g
 
 **Nota sobre validação — build confirmado no CI, não localmente**: o ambiente local desta sessão não conseguiu completar um `next build` de produção para o `platform/` (falha com `SIGBUS` no processo de build — limitação do sistema de ficheiros montado, não do código; o mesmo tipo de limitação já registada durante o trabalho no `website/`). Em vez de insistir no build local, foi feita uma verificação mais forte: ao investigar o repositório, foi encontrado que já existiam dois workflows de CI (`.github/workflows/ci.yml` e `ci-platform.yml`, incluindo `npm ci`, `prisma generate`, `prisma db push` contra um Postgres real efémero, `lint`, `tsc --noEmit` e `next build`) — mas configurados para disparar em pushes ao branch `main`, quando o branch real e ativo deste repositório é `master` (`main` é um branch remoto órfão de uma tentativa de publicação anterior, sem histórico partilhado). Na prática, **nenhum dos dois CIs alguma vez tinha corrido**. Corrigido para `master` nos dois ficheiros — e, já com a correção, ambos os workflows correram pela primeira vez com sucesso sobre o código atual (incluindo o Portal do Cliente): `CI — Plataforma (DS OS)` verde em 1m52s (`prisma db push` aplicado com sucesso a um Postgres real, `next build` concluído sem erros) e `CI — Website` verde em 1m38s. Isto é uma validação mais forte do que um build local: confirma que o `platform/` compila e que o schema Prisma atualizado (incluindo `ClientMessage` e os novos campos de `Attachment`) aplica-se sem erros a um Postgres real — falta apenas ligar esse mesmo processo a um Postgres e hosting de produção (não efémeros) para o Portal do Cliente ficar publicamente acessível.
 
+## CMS Interno (Site — Portefólio, DS OS → Website) — implementado, à espera de aplicação de schema
+
+Módulo `/marketing/website` no DS OS para gerir obras e testemunhos do
+portefólio público sem editar ficheiros: criar/editar obra (narrativa
+completa, media, serviços realizados), publicar/despublicar, gerir
+testemunhos com autorização explícita, exportar o conteúdo publicado para
+um ficheiro que o website importa com `node scripts/import-cms-export.mjs`.
+Testado ponta a ponta com dados sintéticos nesta sessão (obra de teste
+criada, exportada, importada, e o website gerou a página real com
+sucesso). Zero automação DS OS → GitHub por decisão deliberada — ver
+`website-cms-integracao.md` secção 2 para a justificação completa.
+
+**Falta**: 3 modelos novos (`WebsiteCaseStudy`, `WebsiteMediaAsset`,
+`WebsiteTestimonial`) foram adicionados a `prisma/schema.prisma` mas ainda
+não foram aplicados a nenhuma base de dados — nem local, nem produção.
+Só ficam ativos depois de `npx prisma db push` (ou migrations, se essa for
+a via escolhida) contra a base de dados de destino. Ver
+`checklist-lancamento-v1.md` secção 4.
+
 ---
 
 **Resumo em uma linha por integração:**
@@ -94,3 +113,4 @@ O que já está implementado e escrito (código completo, validado com `prisma g
 | Estudo de Viabilidade (HubSpot) | Preparado — falta só `HUBSPOT_VIABILITY_FORM_GUID` |
 | Estudo de Viabilidade (upload de ficheiros) | Pendente — falta decidir e ligar armazenamento (Vercel Blob/S3) |
 | Portal do Cliente (`platform/`) | Código completo, validado por CI real (build + `prisma db push`) — falta Postgres + hosting de produção |
+| CMS Interno (Site — Portefólio) | Código completo e testado ponta a ponta — falta aplicar o schema Prisma a uma base de dados real |

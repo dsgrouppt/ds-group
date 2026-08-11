@@ -2,6 +2,21 @@
 
 *Website institucional da empresa operacional, sob domínio da estrutura DS Group. Versão 1.0.*
 
+> **Nota (2026-08-11):** este documento é o plano estratégico original, escrito
+> antes da implementação. O website construído segue esta arquitetura de
+> perto, mas evoluiu para além dela nalguns pontos — o mais importante:
+> "Projetos" tornou-se um verdadeiro sistema de portefólio/estudos de caso
+> (`/portfolio/[slug]`, estrutura narrativa Desafio/Planeamento/Execução/
+> Solução/Resultado, galeria com antes-durante-depois, vídeos), com um CMS
+> interno no DS OS para o gerir sem tocar em código (ver
+> `website-cms-integracao.md`); a "Área do Cliente" é o Portal do Cliente
+> completo dentro do DS OS, não uma área simples no próprio website; e existe
+> agora um sistema de testemunhos extensível (texto/vídeo/foto/rating),
+> preparado mas vazio até haver autorização real de um cliente. Para o estado
+> técnico exato e validado, ver `relatorio-final-cto.md` e
+> `checklist-lancamento-v1.md`. O resto deste documento — mapa do site, CTAs,
+> SEO, funil de conversão — mantém-se válido como referência estratégica.
+
 ---
 
 ## 1. Mapa do Site
