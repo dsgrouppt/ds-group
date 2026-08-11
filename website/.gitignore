@@ -1,1 +1,7 @@
 *.tsbuildinfo
+
+# Relatorios gerados por scripts/audit-media.mjs — contêm caminhos de
+# ficheiros locais, nunca fazer commit (regenerar sempre que precisares).
+media-audit-report.json
+media-audit-obras.json
+media-audit-obras-detalhe.json
