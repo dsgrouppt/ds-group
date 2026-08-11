@@ -15,6 +15,8 @@ import { Gallery } from "@/components/sections/Gallery";
 import { BeforeAfter } from "@/components/sections/BeforeAfter";
 import { FinalCTA } from "@/components/sections/FinalCTA";
 import { getTestimonialsForCaseStudy } from "@/lib/testimonials-data";
+import { getBlogPostsForCaseStudy } from "@/lib/blog-data";
+import { formatLongDate } from "@/lib/utils";
 
 interface CaseStudyPageProps {
   params: { slug: string };
@@ -56,6 +58,7 @@ export default function CaseStudyPage({ params }: CaseStudyPageProps) {
   const after = caseStudy.gallery.find((m) => m.phase === "depois") ?? caseStudy.cover;
   const galleryAndVideos = [...caseStudy.gallery, ...(caseStudy.videos ?? [])];
   const testimonials = getTestimonialsForCaseStudy(caseStudy.slug);
+  const relatedPosts = getBlogPostsForCaseStudy(caseStudy.servicesRealized, 2);
 
   const breadcrumb = breadcrumbJsonLd([
     { name: "Início", url: siteConfig.url },
@@ -206,6 +209,28 @@ export default function CaseStudyPage({ params }: CaseStudyPageProps) {
                     <span className="text-mist font-light text-[.82rem]">{r.location}</span>
                   </div>
                   <div className="project-arrow">↗</div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {relatedPosts.length > 0 && (
+        <section className="py-24 pb-36 bg-paper">
+          <div className="container max-w-[900px] mx-auto">
+            <h3 className="font-display font-normal text-[1.6rem] mb-10">Artigos relacionados</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {relatedPosts.map((post) => (
+                <Link key={post.slug} href={`/blog/${post.slug}`} className="service-card block h-full">
+                  <div className="text-[.7rem] tracking-[.14em] uppercase text-[var(--gold-text)] mb-3">
+                    {post.category} · {formatLongDate(post.publishedAt)}
+                  </div>
+                  <h3>{post.title}</h3>
+                  <p>{post.excerpt}</p>
+                  <span className="link-arrow">
+                    <span className="bar" /> Ler artigo
+                  </span>
                 </Link>
               ))}
             </div>

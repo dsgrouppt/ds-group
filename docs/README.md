@@ -31,6 +31,7 @@ técnica do CRM).
 | [`playbook-video.md`](./playbook-video.md) | Vídeos horizontais/verticais/drone, especificação do vídeo de fundo da Hero |
 | [`playbook-seo.md`](./playbook-seo.md) | Ações recorrentes de SEO — publicar artigo, nova área geográfica, cadência |
 | [`playbook-redes-sociais.md`](./playbook-redes-sociais.md) | O que publicar, onde, com que cadência, como reaproveitar o portefólio |
+| [`protocolo-producao-obras.md`](./protocolo-producao-obras.md) | Pipeline exato de processamento de obras reais, lote a lote, do ficheiro bruto à publicação |
 
 ### Técnico e infraestrutura
 

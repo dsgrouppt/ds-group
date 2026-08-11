@@ -235,6 +235,20 @@ export function getBlogPostsForService(serviceSlug: string, limit = 2): BlogPost
   return blogPosts.filter((p) => p.relatedServiceSlugs?.includes(serviceSlug)).slice(0, limit);
 }
 
+/**
+ * Artigos de blog relevantes para uma obra do portefólio, cruzando os
+ * serviços realizados na obra (`CaseStudy.servicesRealized`) com os
+ * serviços relacionados de cada artigo (`BlogPost.relatedServiceSlugs`) —
+ * mesma mecânica de `getBlogPostsForService`, mas para uma obra que pode
+ * ter mais do que um serviço associado.
+ */
+export function getBlogPostsForCaseStudy(servicesRealized: string[], limit = 2): BlogPost[] {
+  if (servicesRealized.length === 0) return [];
+  return blogPosts
+    .filter((p) => p.relatedServiceSlugs?.some((s) => servicesRealized.includes(s)))
+    .slice(0, limit);
+}
+
 /** Artigos relacionados: primeiro por categoria partilhada, depois preenche com os mais recentes. */
 export function getRelatedBlogPosts(slug: string, limit = 2): BlogPost[] {
   const current = getBlogPostBySlug(slug);

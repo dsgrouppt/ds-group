@@ -24,6 +24,17 @@ interface PortfolioGridProps {
   initialCategory?: string;
   /** Nº mínimo de cartões antes de completar com ilustrativos. */
   minCards?: number;
+  /**
+   * Ativa "Mostrar mais" em vez de renderizar tudo de uma vez — pensado
+   * para a listagem `/portfolio`, que com centenas de obras reais publicadas
+   * não deve montar centenas de cartões (e centenas de observers de scroll
+   * do Reveal) na primeira carga. Nas grelhas pequenas (teaser da homepage,
+   * mini-grelha de cada página de serviço) fica desligado — já são limitadas
+   * por `minCards`/`slice` a montante, não precisam disto.
+   */
+  paginate?: boolean;
+  /** Quantos cartões mostrar de cada vez quando `paginate` está ativo. */
+  pageSize?: number;
 }
 
 const categoryLabel: Record<string, string> = Object.fromEntries(
@@ -37,24 +48,44 @@ export function PortfolioGrid({
   dense = false,
   initialCategory = "all",
   minCards = 6,
+  paginate = false,
+  pageSize = 12,
 }: PortfolioGridProps) {
   const [active, setActive] = useState(initialCategory);
+  const [visibleCount, setVisibleCount] = useState(pageSize);
 
   const fallbackFill = useMemo(() => {
     const needsFallback = caseStudies.length < minCards;
     return needsFallback ? fallbackProjects.slice(0, minCards - caseStudies.length) : [];
   }, [caseStudies, fallbackProjects, minCards]);
 
-  const visibleCaseStudies = useMemo(
+  const allVisibleCaseStudies = useMemo(
     () => (active === "all" ? caseStudies : caseStudies.filter((c) => c.category === active)),
     [caseStudies, active]
   );
-  const visibleFallback = useMemo(
+  const allVisibleFallback = useMemo(
     () => (active === "all" ? fallbackFill : fallbackFill.filter((p) => p.category === active)),
     [fallbackFill, active]
   );
 
-  const totalVisible = visibleCaseStudies.length + visibleFallback.length;
+  const totalVisible = allVisibleCaseStudies.length + allVisibleFallback.length;
+
+  // Sem paginação: comportamento exatamente igual ao de antes (mostra tudo).
+  // Com paginação: obras reais têm sempre prioridade nos primeiros N cartões
+  // — os ilustrativos só aparecem depois de esgotarem as obras reais dessa
+  // categoria, para nunca "roubar" o lugar a uma obra real ao paginar.
+  const visibleCaseStudies = paginate ? allVisibleCaseStudies.slice(0, visibleCount) : allVisibleCaseStudies;
+  const remainingSlotsForFallback = paginate ? Math.max(0, visibleCount - visibleCaseStudies.length) : Infinity;
+  const visibleFallback = paginate
+    ? allVisibleFallback.slice(0, remainingSlotsForFallback)
+    : allVisibleFallback;
+
+  const hasMore = paginate && visibleCaseStudies.length + visibleFallback.length < totalVisible;
+
+  function handleCategoryChange(value: string) {
+    setActive(value);
+    setVisibleCount(pageSize); // muda de categoria => recomeça a paginação
+  }
 
   return (
     <div>
@@ -64,7 +95,7 @@ export function PortfolioGrid({
             <button
               key={cat.value}
               className={cn("filter-btn", active === cat.value && "active")}
-              onClick={() => setActive(cat.value)}
+              onClick={() => handleCategoryChange(cat.value)}
               type="button"
             >
               {cat.label}
@@ -106,6 +137,14 @@ export function PortfolioGrid({
         <p className="text-graphite-light text-sm mt-8">
           Sem projetos nesta categoria por agora — volte em breve.
         </p>
+      )}
+
+      {hasMore && (
+        <div className="flex justify-center mt-16">
+          <button type="button" className="btn btn-light" onClick={() => setVisibleCount((v) => v + pageSize)}>
+            Mostrar mais obras
+          </button>
+        </div>
       )}
     </div>
   );

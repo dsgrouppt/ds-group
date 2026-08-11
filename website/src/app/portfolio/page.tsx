@@ -53,6 +53,8 @@ export default function PortfolioPage({ searchParams }: PortfolioPageProps) {
             dense
             minCards={12}
             initialCategory={searchParams.categoria ?? "all"}
+            paginate
+            pageSize={12}
           />
         </div>
       </section>
