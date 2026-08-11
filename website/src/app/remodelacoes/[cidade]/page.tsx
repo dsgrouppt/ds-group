@@ -57,7 +57,6 @@ export default function LocalAreaPage({ params }: LocalPageProps) {
         <div className="hero-media">
           <PlaceholderMedia
             variant="dark"
-            label="Fotografia real DS Projects"
             caption={`Projeto em ${area.name}`}
             className="absolute inset-0"
             priority

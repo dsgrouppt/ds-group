@@ -48,15 +48,13 @@ export default function ClientAccessPage() {
       <section className="py-36 bg-white">
         <div className="container">
           <Reveal className="max-w-[56ch] mb-16">
-            <div className="eyebrow">Em finalização</div>
+            <div className="eyebrow">Portal Ativo</div>
             <h2 className="font-display font-normal text-[clamp(1.7rem,3vw,2.4rem)] leading-tight tracking-tight mb-6">
-              O portal está a ser preparado para os primeiros clientes.
+              O portal de cliente já está disponível.
             </h2>
             <p className="text-graphite font-light leading-[1.85] text-[1rem]">
-              Todos os projetos ativos da DS Projects têm, desde já, acesso ao mesmo nível de reporte
-              através do seu gestor de projeto. O acesso direto por login está em fase final de
-              preparação — os clientes com obra em curso recebem as credenciais diretamente do seu
-              gestor assim que disponível.
+              Clientes com obra em curso têm acesso próprio, ativado pelo seu gestor de projeto.
+              Se ainda não recebeu as suas credenciais, contacte o seu gestor ou a nossa equipa.
             </p>
           </Reveal>
 
@@ -70,11 +68,14 @@ export default function ClientAccessPage() {
           </div>
 
           <div className="flex flex-wrap gap-6 items-center">
+            <a href="https://os.dsprojects.pt/portal/login" className="btn btn-dark">
+              Entrar no Portal de Cliente
+            </a>
             <Link href="/estudo-de-viabilidade" className="btn btn-light">
               Ainda não é cliente? Pedir Estudo de Viabilidade
             </Link>
             <a href={`mailto:${siteConfig.email}`} className="link-arrow text-black">
-              <span className="bar" /> É cliente e precisa de acesso? Contacte o seu gestor
+              <span className="bar" /> Ainda não tem credenciais? Contacte-nos
             </a>
           </div>
         </div>

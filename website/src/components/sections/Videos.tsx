@@ -35,7 +35,7 @@ export function Videos() {
                     <PlaceholderMedia
                       variant="dark"
                       className="absolute inset-0"
-                      label="Vídeo real DS — a inserir"
+                      label=""
                     />
                     <div className="play-btn">
                       <svg viewBox="0 0 24 24" className="h-[18px] w-[18px] fill-white ml-[3px]" aria-hidden="true" focusable="false">

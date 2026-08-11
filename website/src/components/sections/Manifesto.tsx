@@ -28,11 +28,7 @@ export function Manifesto() {
         </Reveal>
 
         <Reveal index={1} className="relative aspect-[4/5] order-first lg:order-last">
-          <PlaceholderMedia
-            variant="light"
-            caption="Espaço concluído, luz natural"
-            className="absolute inset-0"
-          />
+          <PlaceholderMedia variant="light" className="absolute inset-0" />
           <div className="absolute inset-[22px] border border-gold/35 pointer-events-none z-[2]" />
         </Reveal>
       </div>

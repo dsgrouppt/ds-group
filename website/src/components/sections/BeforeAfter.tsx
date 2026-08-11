@@ -15,9 +15,9 @@ interface BeforeAfterProps {
 export function BeforeAfter({
   beforeImage,
   afterImage,
-  projectName = "[Nome do Projeto]",
-  location = "[Localização]",
-  duration = "[Duração da obra]",
+  projectName,
+  location,
+  duration,
 }: BeforeAfterProps) {
   const [value, setValue] = useState(50);
 
@@ -37,7 +37,6 @@ export function BeforeAfter({
               <PlaceholderMedia
                 variant="dark"
                 src={afterImage}
-                label="Fotografia real DS — Depois"
                 className="absolute inset-0"
               />
             </div>
@@ -46,7 +45,6 @@ export function BeforeAfter({
                 <PlaceholderMedia
                   variant="light"
                   src={beforeImage}
-                  label="Fotografia real DS — Antes"
                   className="absolute inset-0"
                 />
               </div>
@@ -64,15 +62,12 @@ export function BeforeAfter({
               aria-label="Comparar antes e depois"
             />
           </div>
-          <div className="flex justify-between flex-wrap gap-2 mt-6 text-[.82rem] text-graphite">
-            <span>
-              <b className="font-display font-medium text-ink">{projectName}</b> — a preencher com
-              projeto real
-            </span>
-            <span>
-              {location} · {duration}
-            </span>
-          </div>
+          {(projectName || location || duration) && (
+            <div className="flex justify-between flex-wrap gap-2 mt-6 text-[.82rem] text-graphite">
+              {projectName ? <span><b className="font-display font-medium text-ink">{projectName}</b></span> : <span />}
+              <span>{[location, duration].filter(Boolean).join(" · ")}</span>
+            </div>
+          )}
         </Reveal>
       </div>
     </section>

@@ -11,7 +11,7 @@ Esta secção lista, sem omissões, as mudanças estruturais (não os bugs indiv
 1. **Fundação do monorepo**: criação de `website/` e `platform/` como duas aplicações Next.js separadas dentro do mesmo repositório Git, decisão arquitetural coberta em detalhe na Secção 2.1 (Parte 1).
 2. **Website — construção completa**: 32 rotas, sistema de design com tokens de marca, SEO técnico completo (sitemap, robots, JSON-LD, Open Graph), Estudo de Viabilidade (wizard de 6 passos), integração HubSpot Forms, analytics (GA4/GTM/Meta Pixel) condicionados por variável de ambiente, cabeçalhos de segurança (CSP/HSTS/X-Frame-Options).
 3. **Plataforma — base de dados**: início em SQLite para desenvolvimento local, migração completa para PostgreSQL (decisão registada em `docs/producao.md`) antes de qualquer deploy real de produção — não há nenhum resquício de SQLite no schema ou no código atual.
-4. **Plataforma — schema Prisma**: construção incremental das 17 tabelas, decisão deliberada de usar `String` em vez de enums nativos do Postgres para campos categóricos (ver Secção 2.4, Parte 1), adição de 29 índices numa auditoria dedicada de performance (`docs/auditoria-tech-lead.md`).
+4. **Plataforma — schema Prisma**: construção incremental das 18 tabelas, decisão deliberada de usar `String` em vez de enums nativos do Postgres para campos categóricos (ver Secção 2.4, Parte 1), adição de 32 índices numa auditoria dedicada de performance (`docs/auditoria-tech-lead.md`).
 5. **Autenticação**: implementação do NextAuth com um único provider (equipa), depois extensão para dois providers distintos (`credentials` + `cliente`) quando o Portal do Cliente foi desenhado — decisão de isolamento coberta em detalhe na Secção 2.6 (Parte 1).
 6. **RBAC**: construção da matriz de permissões única (`src/lib/permissions.ts`) como fonte de verdade central, usada tanto no menu lateral como no gating de Server Actions — substituindo qualquer verificação ad-hoc anterior.
 7. **9 módulos funcionais**: construídos incrementalmente (Clientes → CRM → Obras → Financeiro → Agenda → RH → Marketing → Tarefas → Definições/Utilizadores), cada um seguindo o mesmo padrão de Server Component de listagem + Server Actions de mutação + Zod na fronteira.
@@ -105,15 +105,22 @@ Fonte: `platform/src/lib/permissions.ts`. `Action = "view" | "edit"`. Perfis: `A
 | Módulo | view | edit |
 |---|---|---|
 | `dashboard` | todos os 7 perfis | — (dashboard é só leitura, mas mesmo a leitura é filtrada por perfil dentro da própria página — ver correção do Bug #5) |
-| `crm` | ADMIN, DIRECAO, COMERCIAL | ADMIN, DIRECAO, COMERCIAL |
-| `obras` | ADMIN, DIRECAO, COMERCIAL, GESTOR_PROJETO | ADMIN, DIRECAO, GESTOR_PROJETO |
-| `clientes` | ADMIN, DIRECAO, COMERCIAL, GESTOR_PROJETO | ADMIN, DIRECAO, COMERCIAL, GESTOR_PROJETO |
+| `crm` | ADMIN, DIRECAO, COMERCIAL, MARKETING | ADMIN, DIRECAO, COMERCIAL |
+| `obras` | ADMIN, DIRECAO, GESTOR_PROJETO, FINANCEIRO, COMERCIAL | ADMIN, DIRECAO, GESTOR_PROJETO |
+| `clientes` | ADMIN, DIRECAO, COMERCIAL, GESTOR_PROJETO, FINANCEIRO | ADMIN, DIRECAO, COMERCIAL, GESTOR_PROJETO |
 | `financeiro` | ADMIN, DIRECAO, FINANCEIRO | ADMIN, DIRECAO, FINANCEIRO |
-| `agenda` | todos os 7 perfis | todos os 7 perfis |
+| `agenda` | ADMIN, DIRECAO, GESTOR_PROJETO, COMERCIAL | ADMIN, DIRECAO, GESTOR_PROJETO, COMERCIAL |
 | `rh` | ADMIN, DIRECAO, RH | ADMIN, DIRECAO, RH |
 | `marketing` | ADMIN, DIRECAO, MARKETING | ADMIN, DIRECAO, MARKETING |
 | `tarefas` | todos os 7 perfis | todos os 7 perfis |
 | `definicoes` | ADMIN | ADMIN |
+
+**Correção (12 ago 2026)**: a versão anterior desta tabela (escrita em 10 ago 2026) tinha três imprecisões
+face ao `permissions.ts` real, confirmadas por leitura direta do ficheiro no GitHub nesta data:
+`agenda` não é "todos os 7 perfis" — está restrita a ADMIN, DIRECAO, GESTOR_PROJETO, COMERCIAL (RH,
+FINANCEIRO e MARKETING não têm acesso); `crm.view` inclui MARKETING; `obras.view` e `clientes.view`
+incluem FINANCEIRO. A tabela acima já reflete o ficheiro real. Isto não é uma falha de segurança — é a
+documentação que estava desalinhada do código, exatamente o cenário que a nota abaixo previne.
 
 Nota: esta tabela é uma transcrição fiel do estado observado em `permissions.ts` durante a investigação desta sessão — em caso de qualquer dúvida futura, **o próprio ficheiro `src/lib/permissions.ts` é sempre a fonte de verdade definitiva**, nunca esta tabela (ver Secção 15).
 
@@ -172,7 +179,7 @@ Não existe (ainda) uma funcionalidade de "esqueci-me da password" self-service 
 
 ### 9.2. Índices
 
-29 índices `@@index`, todos justificados por uma auditoria dedicada de performance (`docs/auditoria-tech-lead.md`) e confirmados via `pg_indexes` contra a base de dados real de produção — cobrem todas as chaves estrangeiras (evita table scans em joins) e as colunas usadas em filtros/ordenação mais comuns nas tabelas de maior volume esperado (`Deal.stage`, `Project.status`, `Task.status`+`Task.dueDate`, `Client.type`, `Invoice.status`, `Payment.invoiceId`, `Attachment.projectId`, `ActivityLog.createdAt`, `CalendarEvent.startsAt`, `Employee.active`, entre outros).
+32 índices `@@index` (contagem corrigida em 12 ago 2026 por contagem direta em `schema.prisma` no GitHub — a versão anterior deste documento indicava 29), todos justificados por uma auditoria dedicada de performance (`docs/auditoria-tech-lead.md`) e confirmados via `pg_indexes` contra a base de dados real de produção — cobrem todas as chaves estrangeiras (evita table scans em joins) e as colunas usadas em filtros/ordenação mais comuns nas tabelas de maior volume esperado (`Deal.stage`, `Project.stage`, `Task.status`+`Task.dueAt`, `Client.type`, `Invoice.status`, `Payment.invoiceId`, `Attachment.projectId`, `ActivityLog.createdAt`, `CalendarEvent.startAt`, `Employee.status`, entre outros — os nomes de campo aqui foram também corrigidos para bater certo com `schema.prisma`).
 
 ### 9.3. Constraints
 

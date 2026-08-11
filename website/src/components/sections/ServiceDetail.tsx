@@ -17,7 +17,6 @@ export function ServiceDetail({ service }: { service: Service }) {
         <div className="hero-media">
           <PlaceholderMedia
             variant="dark"
-            label="Fotografia real DS Projects"
             caption={`${service.title} — imagem de capa`}
             className="absolute inset-0"
             priority

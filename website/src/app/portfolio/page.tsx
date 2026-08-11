@@ -23,8 +23,6 @@ export default function PortfolioPage({ searchParams }: PortfolioPageProps) {
         <div className="hero-media">
           <PlaceholderMedia
             variant="dark"
-            label="Fotografia real DS Projects"
-            caption="Portefólio — imagem de capa"
             className="absolute inset-0"
             priority
           />

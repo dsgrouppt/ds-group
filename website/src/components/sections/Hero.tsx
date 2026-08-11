@@ -14,12 +14,7 @@ export function Hero() {
     <section ref={ref} className="hero" id="top">
       <div className="hero-media">
         <motion.div style={{ y, height: "120%" }} className="absolute inset-0">
-          <PlaceholderMedia
-            variant="dark"
-            label="Fotografia real DS Projects"
-            caption="Hero — imagem de projeto emblemático"
-            priority
-          />
+          <PlaceholderMedia variant="dark" priority />
         </motion.div>
       </div>
 

@@ -59,6 +59,7 @@ export function Footer() {
             </h4>
             <a href={`mailto:${siteConfig.email}`}>{siteConfig.email}</a>
             <a href={`tel:${siteConfig.phone}`}>{siteConfig.phoneDisplay}</a>
+            <a href={`tel:${siteConfig.phoneAlt}`}>{siteConfig.phoneAltDisplay}</a>
             <span className="block text-sm font-light text-[#c9c9c8] mb-[.9rem]">
               {siteConfig.locations.join(" · ")}
             </span>

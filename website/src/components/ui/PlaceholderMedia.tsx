@@ -24,7 +24,7 @@ export function PlaceholderMedia({
   src,
   alt = "",
   variant = "light",
-  label = "Fotografia real DS Projects",
+  label = "",
   caption,
   className,
   sizes = "100vw",
@@ -50,7 +50,7 @@ export function PlaceholderMedia({
         <circle cx="9" cy="10" r="2" />
         <path d="M21 16l-5.5-4.5-4 4-3-2.2L3 17" />
       </svg>
-      <span className="ph-label">{label}</span>
+      {label ? <span className="ph-label">{label}</span> : null}
       {caption ? <span className="ph-caption">{caption}</span> : null}
     </div>
   );

@@ -73,6 +73,12 @@ export function Header() {
                                 </nav>
                       
                                 <div className="flex items-center gap-[2.2rem]">
+                                            <a
+                                              href={`tel:${siteConfig.phone}`}
+                                              className="hidden lg:inline text-[.78rem] text-mist tracking-[.03em] hover:text-white transition-colors"
+                                            >
+                                              {siteConfig.phoneDisplay}
+                                            </a>
                                             <Link
                                                             href="/estudo-de-viabilidade"
                                                             className="btn btn-dark hidden lg:inline-flex"

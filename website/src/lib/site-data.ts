@@ -1,11 +1,8 @@
 import type {
   Service,
   Project,
-  Stat,
-  TeamMember,
   TimelineStep,
   VideoItem,
-  VideoTestimonial,
 } from "@/types";
 
 /**
@@ -25,8 +22,11 @@ export const siteConfig = {
   tagline: "Gestão de Projeto. Uma empresa DS Group.",
   url: process.env.NEXT_PUBLIC_SITE_URL || "https://www.dsprojects.pt",
   email: "geral@dsprojects.pt",
-  phone: "+351000000000",
-  phoneDisplay: "+351 000 000 000",
+  // Contactos reais da DS Projects (confirmados pelo proprietário do produto, ago/2026).
+  phone: "+351933356479",
+  phoneDisplay: "+351 933 356 479",
+  phoneAlt: "+351928241691",
+  phoneAltDisplay: "+351 928 241 691",
   locations: ["Lisboa", "Porto", "Cascais", "Oeiras", "Sintra", "Vila Nova de Gaia", "Matosinhos", "Almada"],
 };
 
@@ -149,28 +149,20 @@ export function getRelatedServices(slug: string, limit = 3): Service[] {
   return services.filter((s) => s.slug !== slug).slice(0, limit);
 }
 
-// Sem dados reais ainda — value:null é renderizado como "—" pelo componente DataStrip.
-export const stats: Stat[] = [
-  { label: "Projetos Entregues", value: null },
-  { label: "Dentro do Prazo Contratual", value: null, suffix: "%" },
-  { label: "Anos de Experiência da Equipa", value: null },
-  { label: "Avaliação Média de Clientes", value: null },
-];
-
 // image:undefined => PlaceholderMedia mostra o placeholder identificado.
 export const projects: Project[] = [
-  { id: "p1", title: "[Nome do Projeto]", location: "Lisboa", category: "residencial" },
-  { id: "p2", title: "[Nome do Projeto]", location: "Cascais", category: "premium" },
-  { id: "p3", title: "[Nome do Projeto]", location: "Porto", category: "cozinhas" },
-  { id: "p4", title: "[Nome do Projeto]", location: "Lisboa", category: "casas-de-banho" },
-  { id: "p5", title: "[Nome do Projeto]", location: "Sintra", category: "moradias" },
-  { id: "p6", title: "[Nome do Projeto]", location: "Lisboa", category: "comercial" },
-  { id: "p7", title: "[Nome do Projeto]", location: "Porto", category: "residencial" },
-  { id: "p8", title: "[Nome do Projeto]", location: "Estoril", category: "premium" },
-  { id: "p9", title: "[Nome do Projeto]", location: "Cascais", category: "moradias" },
-  { id: "p10", title: "[Nome do Projeto]", location: "Porto", category: "casas-de-banho" },
-  { id: "p11", title: "[Nome do Projeto]", location: "Matosinhos", category: "comercial" },
-  { id: "p12", title: "[Nome do Projeto]", location: "Cascais", category: "cozinhas" },
+  { id: "p1", title: "Remodelação Residencial — Lisboa", location: "Lisboa", category: "residencial" },
+  { id: "p2", title: "Remodelação Premium — Cascais", location: "Cascais", category: "premium" },
+  { id: "p3", title: "Remodelação de Cozinha — Porto", location: "Porto", category: "cozinhas" },
+  { id: "p4", title: "Remodelação de Casa de Banho — Lisboa", location: "Lisboa", category: "casas-de-banho" },
+  { id: "p5", title: "Remodelação de Moradia — Sintra", location: "Sintra", category: "moradias" },
+  { id: "p6", title: "Remodelação de Espaço Comercial — Lisboa", location: "Lisboa", category: "comercial" },
+  { id: "p7", title: "Remodelação Residencial — Porto", location: "Porto", category: "residencial" },
+  { id: "p8", title: "Remodelação Premium — Estoril", location: "Estoril", category: "premium" },
+  { id: "p9", title: "Remodelação de Moradia — Cascais", location: "Cascais", category: "moradias" },
+  { id: "p10", title: "Remodelação de Casa de Banho — Porto", location: "Porto", category: "casas-de-banho" },
+  { id: "p11", title: "Remodelação de Espaço Comercial — Matosinhos", location: "Matosinhos", category: "comercial" },
+  { id: "p12", title: "Remodelação de Cozinha — Cascais", location: "Cascais", category: "cozinhas" },
 ];
 
 export function getProjectsByCategory(category?: string, limit?: number): Project[] {
@@ -179,13 +171,6 @@ export function getProjectsByCategory(category?: string, limit?: number): Projec
     : projects;
   return typeof limit === "number" ? filtered.slice(0, limit) : filtered;
 }
-
-export const team: TeamMember[] = [
-  { name: null, role: "Diretor de Operações" },
-  { name: null, role: "Gestora de Projeto Sénior" },
-  { name: null, role: "Diretor Técnico e Qualidade" },
-  { name: null, role: "Responsável Comercial" },
-];
 
 export const timelineSteps: TimelineStep[] = [
   { time: "Semana 1", title: "Arranque e Preparação", description: "Kickoff, encomenda de materiais, proteção do espaço." },
@@ -199,12 +184,6 @@ export const videos: VideoItem[] = [
   { id: "v1", title: "Do Levantamento à Entrega — Ep. 01" },
   { id: "v2", title: "Bastidores da Equipa Técnica" },
   { id: "v3", title: "Como Fazemos um Orçamento" },
-];
-
-export const videoTestimonials: VideoTestimonial[] = [
-  { id: "t1", clientName: null, context: "[Tipo de projeto — Localização]" },
-  { id: "t2", clientName: null, context: "[Tipo de projeto — Localização]" },
-  { id: "t3", clientName: null, context: "[Tipo de projeto — Localização]" },
 ];
 
 export const mainNav = [

@@ -4,9 +4,7 @@ import { DataStrip } from "@/components/sections/DataStrip";
 import { Services } from "@/components/sections/Services";
 import { Manifesto } from "@/components/sections/Manifesto";
 import { Method } from "@/components/sections/Method";
-import { BeforeAfter } from "@/components/sections/BeforeAfter";
 import { ProjectsGrid } from "@/components/sections/ProjectsGrid";
-import { Videos } from "@/components/sections/Videos";
 import { VideoTestimonials } from "@/components/sections/VideoTestimonials";
 import { Timeline } from "@/components/sections/Timeline";
 import { Team } from "@/components/sections/Team";
@@ -35,14 +33,13 @@ export default function HomePage() {
       <Services />
       <Manifesto />
       <Method />
-      <BeforeAfter />
 
       <section className="py-36 bg-white">
         <div className="container">
           <div className="flex justify-between items-end gap-8 flex-wrap mb-16">
             <Reveal>
               <h2 className="font-display font-normal text-[clamp(1.9rem,3.4vw,3rem)] leading-tight tracking-tight max-w-[16ch]">
-                Uma seleção do que já entregámos.
+                O tipo de projeto que gerimos.
               </h2>
             </Reveal>
             <LinkArrow href="/portfolio">Ver portefólio completo</LinkArrow>
@@ -51,7 +48,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      <Videos />
       <VideoTestimonials />
       <Timeline />
       <Team />
