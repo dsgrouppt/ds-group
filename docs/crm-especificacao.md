@@ -4,6 +4,19 @@
 
 ---
 
+> **⚠️ DOCUMENTO ARQUIVADO — versão histórica (v1.0), NÃO é a fonte de verdade atual.**
+> A partir de ago/2026, o processo comercial operacional da DS Projects é definido por
+> [`05_Processo_Comercial_Operacional_DS.md`](./05_Processo_Comercial_Operacional_DS.md)
+> (Diretor Comercial) e implementado no DS OS conforme
+> [`06_Auditoria_DS_OS_e_Plano_Implementacao.md`](./06_Auditoria_DS_OS_e_Plano_Implementacao.md) (CTO).
+> Este documento fica preservado por valor histórico (foi a base de desenho inicial do
+> `platform/prisma/schema.prisma`), mas os valores abaixo (SLA, cadências de follow-up,
+> etc.) **não devem ser usados** — divergem dos aprovados no documento 05 (ex.: aqui o SLA
+> de qualificação é "<2h", no documento 05 é "15 min em horário comercial / 2h fora dele";
+> aqui a cadência de follow-up é 24h/48h/5 dias/10 dias, no documento 05 é D+1/D+3/D+7/D+14/D+21).
+
+---
+
 ## 1. Objetos Principais
 
 O CRM organiza-se em três objetos ligados entre si: **Lead/Contacto**, **Negócio (Deal)** e **Projeto (pós-fecho)**. Um lead qualifica-se em Negócio; um Negócio fechado gera automaticamente um Projeto.
