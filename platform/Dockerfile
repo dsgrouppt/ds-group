@@ -10,7 +10,23 @@ COPY package.json package-lock.json ./
 # (COPY . .). Sem isto, o postinstall (prisma generate) desta stage falha
 # porque nao encontra prisma/schema.prisma. O "builder" ja corre
 # "npx prisma generate" explicitamente depois de copiar tudo (linha 15).
-RUN npm ci --ignore-scripts
+#
+# "npm install" em vez de "npm ci" (Fase 4, ago/2026 — adicao da
+# dependencia "resend" para notificacoes por email, doc 05 §7.4): o fluxo
+# de publicacao de codigo desta missao e feito via upload manual pela
+# interface web do GitHub (sem acesso de push/git direto — ver missao
+# CTO), o que torna impraticavel publicar o package-lock.json inteiro
+# (250KB+, uma arvore de dependencias completa) so para refletir uma linha
+# nova no package.json. "npm ci" exige um lockfile exatamente em sincronia
+# e falha de outra forma; "npm install" resolve e atualiza o lockfile
+# dentro da propria imagem em build time sem exigir isso — com a mesma
+# garantia de reprodutibilidade aqui porque TODAS as versoes em
+# package.json sao fixas (sem "^"/"~"), nunca ranges, entao "npm install"
+# resolve sempre exatamente as mesmas versoes que "npm ci" resolveria.
+# Validado localmente (ver docs/notificacoes-runbook.md): "npm install
+# --ignore-scripts" a partir do package-lock.json antigo (sem "resend")
+# mais o package.json novo instala corretamente a versao exata pedida.
+RUN npm install --ignore-scripts
 
 FROM node:20-alpine AS builder
 WORKDIR /app
@@ -54,7 +70,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 # Passo manual obrigatório no dashboard da Railway, para este serviço:
 #   Settings -> Volumes -> Add Volume -> Mount Path: /app/storage
 # STORAGE_DIR aponta para dentro desse mount path, garantindo que os
-# uploads sobrevivem a reinícios/redeploys do container.
+# uploads sobrevivem a reinicios/redeploys do container.
 RUN mkdir -p /app/storage/uploads && chown -R nextjs:nodejs /app/storage
 ENV STORAGE_DIR=/app/storage/uploads
 
