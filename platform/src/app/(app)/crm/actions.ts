@@ -11,6 +11,7 @@ import { DEAL_STAGE_ORDER, LEAD_SOURCE, PROJECT_TYPE, BUDGET_RANGE, LOSS_REASON,
 import { parseOptionalMoney } from "@/lib/money";
 import { firstContactDueAt } from "@/lib/sla";
 import { qualificationScoreTotal, qualificationCategoryFromScore, parseQualificationInput } from "@/lib/qualification";
+import { notifyLeadNovo, notifyPropostaEnviada, notifyPropostaAceite, notifyPropostaRecusada } from "@/lib/notifications";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -68,6 +69,7 @@ export async function createDeal(formData: FormData) {
    * vice-versa).
    */
   const now = new Date();
+  const primeiroContactoDueAt = firstContactDueAt(now);
   const dealId = await prisma.$transaction(async (tx) => {
     const deal = await tx.deal.create({
       data: {
@@ -87,7 +89,7 @@ export async function createDeal(formData: FormData) {
         title: "Primeiro Contacto",
         description: "SLA: 15 min em horário comercial (seg-sex, 09:00-19:00) / 2h fora desse horário.",
         priority: "URGENTE",
-        dueAt: firstContactDueAt(now),
+        dueAt: primeiroContactoDueAt,
         assigneeId: deal.ownerId ?? undefined,
         dealId: deal.id,
         createdById: user.id,
@@ -99,7 +101,20 @@ export async function createDeal(formData: FormData) {
     return deal.id;
   });
 
-  void dealId;
+  // Notificação "Lead Novo" (Fase 4, doc 05 §7.4) — deliberadamente FORA da
+  // transação: uma chamada de rede (envio de email) nunca deve poder
+  // prender ou reverter uma escrita na base de dados já confirmada. Se o
+  // envio falhar, o negócio e a tarefa continuam criados normalmente — só
+  // o alerta é que fica em falta (e o próprio SLA de risco/violado, via
+  // verificação periódica, acaba por cobrir o mesmo caso pouco depois).
+  await notifyLeadNovo({
+    dealId,
+    dealTitle: data.title,
+    assigneeEmail: user.email,
+    assigneeName: user.name,
+    dueAt: primeiroContactoDueAt,
+  });
+
   revalidatePath("/crm");
   revalidatePath("/tarefas");
   redirect("/crm");
@@ -156,7 +171,7 @@ export async function advanceDealStage(dealId: string, formData: FormData) {
 
   const now = new Date();
 
-  await prisma.$transaction(async (tx) => {
+  const outcome = await prisma.$transaction(async (tx) => {
     const before = await tx.deal.findUniqueOrThrow({ where: { id: dealId } });
 
     const data: Prisma.DealUpdateInput = { stage: nextStage };
@@ -172,7 +187,10 @@ export async function advanceDealStage(dealId: string, formData: FormData) {
       data.lossReason = lossReason;
     }
 
-    const deal = await tx.deal.update({ where: { id: dealId }, data });
+    // include owner: necessário para as notificações da Fase 4 (doc 05
+    // §7.4) enviadas depois da transação — evita uma query extra só para
+    // obter o email do responsável pelo negócio.
+    const deal = await tx.deal.update({ where: { id: dealId }, data, include: { owner: true } });
 
     // "Fechado — Ganho" cria automaticamente uma Obra, conforme
     // docs/crm-especificacao.md §6 (automação "Negócio marcado Fechado — Ganho").
@@ -238,7 +256,21 @@ export async function advanceDealStage(dealId: string, formData: FormData) {
     await tx.activityLog.create({
       data: { userId: user.id, action: "STAGE_CHANGE", entity: "Deal", entityId: dealId, meta: `stage=${nextStage}` },
     });
+
+    return { dealTitle: deal.title, ownerEmail: deal.owner?.email, ownerName: deal.owner?.name, isGenuineProposalTransition: nextStage === "PROPOSTA_ENVIADA" && before.stage !== "PROPOSTA_ENVIADA" };
   });
+
+  // Notificações da Fase 4 (doc 05 §7.4) — deliberadamente FORA da
+  // transação, pelo mesmo motivo documentado em createDeal acima (uma
+  // chamada de rede nunca deve poder prender/reverter uma escrita já
+  // confirmada na base de dados).
+  if (nextStage === "PROPOSTA_ENVIADA" && outcome.isGenuineProposalTransition) {
+    await notifyPropostaEnviada({ dealId, dealTitle: outcome.dealTitle, ownerEmail: outcome.ownerEmail, ownerName: outcome.ownerName });
+  } else if (nextStage === "FECHADO_GANHO") {
+    await notifyPropostaAceite({ dealId, dealTitle: outcome.dealTitle, ownerEmail: outcome.ownerEmail, ownerName: outcome.ownerName });
+  } else if (nextStage === "FECHADO_PERDIDO") {
+    await notifyPropostaRecusada({ dealId, dealTitle: outcome.dealTitle, ownerEmail: outcome.ownerEmail, ownerName: outcome.ownerName, lossReason });
+  }
 
   revalidatePath("/crm");
   revalidatePath("/obras");
