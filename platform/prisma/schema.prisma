@@ -477,6 +477,33 @@ model TaskComment {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+// NOTIFICAÇÕES (Fase 4 — doc 05_Processo_Comercial_Operacional_DS.md §7.4)
+// ─────────────────────────────────────────────────────────────────────────
+
+// type: "LEAD_NOVO" | "SLA_RISCO" | "SLA_VIOLADO" | "FOLLOWUP_DUE" |
+//   "PROPOSTA_ENVIADA" | "PROPOSTA_ACEITE" | "PROPOSTA_RECUSADA"
+// Regista cada notificação de facto ENVIADA por email (via Resend, ver
+// src/lib/email.ts) — usado só para idempotência (nunca reenviar o mesmo
+// alerta duas vezes a partir da verificação periódica em
+// /api/internal/notifications-check), nunca para lógica de negócio.
+// Sem relação FK a Task/Deal deliberadamente: é um registo leve de
+// auditoria de envio, não deve obrigar a regras de cascade/onDelete nos
+// modelos principais só por causa disto — dealId/taskId são só referência
+// informativa (podem apontar para um registo entretanto apagado).
+model Notification {
+  id        String   @id @default(cuid())
+  type      String
+  dealId    String?
+  taskId    String?
+  sentTo    String
+  createdAt DateTime @default(now())
+
+  @@index([type, taskId])
+  @@index([type, dealId])
+  @@index([createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // WEBSITE — CMS INTERNO (Site "Portefólio")
 // ─────────────────────────────────────────────────────────────────────────
 // Adicionado autonomamente (ago/2026) como base para o pedido "CMS interno /
