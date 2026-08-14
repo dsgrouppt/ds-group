@@ -23,9 +23,6 @@ export function pushDataLayer(event: Record<string, unknown>): void {
 
 export function trackPageview(url: string): void {
   pushDataLayer({ event: "pageview", page: url });
-  if (typeof window !== "undefined" && window.gtag && process.env.NEXT_PUBLIC_GA_ID) {
-    window.gtag("config", process.env.NEXT_PUBLIC_GA_ID, { page_path: url });
-  }
   if (typeof window !== "undefined" && window.fbq) {
     window.fbq("track", "PageView");
   }
