@@ -21,6 +21,52 @@ function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+/**
+ * Auditoria ponta-a-ponta (ago/2026): este formulário submetia SÓ ao
+ * HubSpot — não existia nenhuma via automática para o DS OS, o que
+ * significava que um lead do site nunca entrava sozinho no CRM. Isto
+ * chama o DS OS diretamente (server-a-servidor, nunca o browser do
+ * visitante) em paralelo com o HubSpot, autenticado por um token
+ * partilhado (LEAD_INTAKE_TOKEN — ver platform/src/app/api/internal/
+ * lead-intake/route.ts). Deliberadamente NÃO bloqueia nem altera a
+ * resposta ao visitante: o resultado desta chamada só é registado nos
+ * logs do servidor. O HubSpot continua a determinar a resposta ao
+ * visitante, exatamente como antes — zero alteração de comportamento
+ * visível se o DS OS estiver em baixo.
+ */
+async function notifyDsOs(body: ContactPayload): Promise<void> {
+  const token = process.env.LEAD_INTAKE_TOKEN;
+  if (!token) {
+    console.error("[contact→DS OS] LEAD_INTAKE_TOKEN não configurado — lead não replicado no DS OS.");
+    return;
+  }
+  const baseUrl = process.env.DS_OS_INTERNAL_URL || "https://os.dsprojects.pt";
+
+  try {
+    const res = await fetch(`${baseUrl}/api/internal/lead-intake`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        name: body.firstname,
+        email: body.email,
+        phone: body.phone,
+        projectType: body.project_type,
+        budgetRange: body.budget_range,
+        message: body.message,
+        pageUri: body.pageUri,
+        pageName: body.pageName,
+      }),
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) {
+      const errText = await res.text().catch(() => "");
+      console.error("[contact→DS OS] Falha ao criar lead no DS OS:", res.status, errText);
+    }
+  } catch (error) {
+    console.error("[contact→DS OS] Erro de rede ao contactar o DS OS:", error);
+  }
+}
+
 export async function POST(request: Request) {
   // Limite de 5 submissões por IP a cada 10 minutos — protege o HubSpot
   // (e o formulário) de submissões repetidas/automatizadas, sem exigir
@@ -42,7 +88,8 @@ export async function POST(request: Request) {
   }
 
   // Honeypot: campo só visível/preenchível por bots. Devolve 200 "silencioso"
-  // para não dar pistas a scripts automáticos, mas não contacta o HubSpot.
+  // para não dar pistas a scripts automáticos, mas não contacta o HubSpot
+  // nem o DS OS.
   if (body.website) {
     return NextResponse.json({ ok: true });
   }
@@ -60,6 +107,10 @@ export async function POST(request: Request) {
     );
   }
 
+  // DS OS corre em paralelo com o HubSpot (Promise.allSettled) para não
+  // duplicar a latência — o resultado do DS OS nunca decide a resposta.
+  const dsOsPromise = notifyDsOs(body);
+
   const portalId = process.env.HUBSPOT_PORTAL_ID;
   const formGuid = process.env.HUBSPOT_FORM_GUID;
 
@@ -67,6 +118,7 @@ export async function POST(request: Request) {
     console.error(
       "HUBSPOT_PORTAL_ID / HUBSPOT_FORM_GUID não configurados — ver .env.local.example."
     );
+    await dsOsPromise;
     return NextResponse.json(
       { error: "Formulário temporariamente indisponível. Tente novamente mais tarde." },
       { status: 500 }
@@ -115,6 +167,8 @@ export async function POST(request: Request) {
       }
     );
 
+    await dsOsPromise;
+
     if (!hsRes.ok) {
       const errBody = await hsRes.text();
       console.error("Erro na submissão HubSpot:", hsRes.status, errBody);
@@ -126,6 +180,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (error) {
+    await dsOsPromise;
     console.error("Erro de rede ao contactar o HubSpot:", error);
     return NextResponse.json(
       { error: "Não foi possível enviar o pedido. Tente novamente." },
