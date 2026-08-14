@@ -38,6 +38,7 @@ export const CLIENT_TYPE_LABEL: Record<ClientTypeValue, string> = {
 };
 
 export const LEAD_SOURCE = {
+  SITE: "SITE",
   GOOGLE_ADS: "GOOGLE_ADS",
   META_ADS: "META_ADS",
   REFERENCIA: "REFERENCIA",
@@ -47,6 +48,7 @@ export const LEAD_SOURCE = {
 } as const;
 export type LeadSourceValue = (typeof LEAD_SOURCE)[keyof typeof LEAD_SOURCE];
 export const LEAD_SOURCE_LABEL: Record<LeadSourceValue, string> = {
+  SITE: "Site",
   GOOGLE_ADS: "Google Ads",
   META_ADS: "Meta Ads",
   REFERENCIA: "Referência",
