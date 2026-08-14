@@ -82,6 +82,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           // eslint-disable-next-line react/no-danger
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd()) }}
         />
+        <GoogleTagManagerScript /><GoogleAnalyticsScript /><MetaPixelScript />
       </head>
       <body>
         <GoogleTagManagerNoscript />
@@ -98,9 +99,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </main>
         <Footer />
         <MobileContactBar />
-        <GoogleTagManagerScript />
-        <GoogleAnalyticsScript />
-        <MetaPixelScript />
       </body>
     </html>
   );
