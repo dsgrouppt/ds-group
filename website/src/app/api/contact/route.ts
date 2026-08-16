@@ -15,6 +15,18 @@ interface ContactPayload {
   website?: string; // honeypot
   pageUri?: string;
   pageName?: string;
+  // Atribuição de origem (UTM/gclid/fbclid) — ago/2026. Capturados no
+  // primeiro touchpoint pelo browser (ver website/src/lib/analytics.ts,
+  // captureAttribution) e só encaminhados ao DS OS (ver notifyDsOs abaixo)
+  // — o HubSpot continua a receber exatamente o mesmo payload de sempre.
+  utmSource?: string;
+  utmMedium?: string;
+  utmCampaign?: string;
+  utmTerm?: string;
+  utmContent?: string;
+  gclid?: string;
+  fbclid?: string;
+  referrer?: string;
 }
 
 function isValidEmail(email: string): boolean {
@@ -55,6 +67,14 @@ async function notifyDsOs(body: ContactPayload): Promise<void> {
         message: body.message,
         pageUri: body.pageUri,
         pageName: body.pageName,
+        utmSource: body.utmSource,
+        utmMedium: body.utmMedium,
+        utmCampaign: body.utmCampaign,
+        utmTerm: body.utmTerm,
+        utmContent: body.utmContent,
+        gclid: body.gclid,
+        fbclid: body.fbclid,
+        referrer: body.referrer,
       }),
       signal: AbortSignal.timeout(8000),
     });
