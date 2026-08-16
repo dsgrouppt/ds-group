@@ -12,6 +12,7 @@ import { parseOptionalMoney } from "@/lib/money";
 import { firstContactDueAt } from "@/lib/sla";
 import { qualificationScoreTotal, qualificationCategoryFromScore, parseQualificationInput } from "@/lib/qualification";
 import { notifyLeadNovo, notifyPropostaEnviada, notifyPropostaAceite, notifyPropostaRecusada } from "@/lib/notifications";
+import { sendCapiEvent } from "@/lib/meta-capi";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -190,7 +191,7 @@ export async function advanceDealStage(dealId: string, formData: FormData) {
     // include owner: necessário para as notificações da Fase 4 (doc 05
     // §7.4) enviadas depois da transação — evita uma query extra só para
     // obter o email do responsável pelo negócio.
-    const deal = await tx.deal.update({ where: { id: dealId }, data, include: { owner: true } });
+    const deal = await tx.deal.update({ where: { id: dealId }, data, include: { owner: true, client: true } });
 
     // "Fechado — Ganho" cria automaticamente uma Obra, conforme
     // docs/crm-especificacao.md §6 (automação "Negócio marcado Fechado — Ganho").
@@ -257,7 +258,20 @@ export async function advanceDealStage(dealId: string, formData: FormData) {
       data: { userId: user.id, action: "STAGE_CHANGE", entity: "Deal", entityId: dealId, meta: `stage=${nextStage}` },
     });
 
-    return { dealTitle: deal.title, ownerEmail: deal.owner?.email, ownerName: deal.owner?.name, isGenuineProposalTransition: nextStage === "PROPOSTA_ENVIADA" && before.stage !== "PROPOSTA_ENVIADA" };
+    return {
+      dealTitle: deal.title,
+      ownerEmail: deal.owner?.email,
+      ownerName: deal.owner?.name,
+      isGenuineProposalTransition: nextStage === "PROPOSTA_ENVIADA" && before.stage !== "PROPOSTA_ENVIADA",
+      // Meta CAPI (ago/2026) — dados do cliente + fbp/fbc guardados no
+      // momento do lead (ver lead-intake/route.ts), reutilizados abaixo
+      // para o evento de fecho de negócio (fora da transação).
+      clientEmail: deal.client?.email,
+      clientPhone: deal.client?.phone,
+      metaFbp: deal.metaFbp,
+      metaFbc: deal.metaFbc,
+      amount: deal.amount,
+    };
   });
 
   // Notificações da Fase 4 (doc 05 §7.4) — deliberadamente FORA da
@@ -268,6 +282,30 @@ export async function advanceDealStage(dealId: string, formData: FormData) {
     await notifyPropostaEnviada({ dealId, dealTitle: outcome.dealTitle, ownerEmail: outcome.ownerEmail, ownerName: outcome.ownerName });
   } else if (nextStage === "FECHADO_GANHO") {
     await notifyPropostaAceite({ dealId, dealTitle: outcome.dealTitle, ownerEmail: outcome.ownerEmail, ownerName: outcome.ownerName });
+
+    // Evento Meta CAPI "NegocioGanho" (ago/2026) — sem equivalente no
+    // Pixel do browser (esta transição acontece aqui dentro do DS OS, não
+    // no site público), por isso sem event_id/dedup: é um evento só-CAPI.
+    // action_source "system_generated" porque a origem é uma ação interna
+    // da equipa, não uma visita ao site. Reutiliza fbp/fbc guardados no
+    // Deal desde o momento do lead original para manter a ligação à
+    // campanha/clique que gerou o negócio. Falha silenciosa, como todas as
+    // integrações externas neste ficheiro — nunca bloqueia o fecho do
+    // negócio em si.
+    const capiResult = await sendCapiEvent({
+      eventName: "NegocioGanho",
+      actionSource: "system_generated",
+      userData: {
+        email: outcome.clientEmail,
+        phone: outcome.clientPhone ?? undefined,
+        fbp: outcome.metaFbp ?? undefined,
+        fbc: outcome.metaFbc ?? undefined,
+      },
+      customData: outcome.amount ? { value: outcome.amount, currency: "EUR" } : undefined,
+    });
+    if (!capiResult.ok) {
+      console.error("[crm] Evento CAPI \"NegocioGanho\" não enviado:", capiResult.error);
+    }
   } else if (nextStage === "FECHADO_PERDIDO") {
     await notifyPropostaRecusada({ dealId, dealTitle: outcome.dealTitle, ownerEmail: outcome.ownerEmail, ownerName: outcome.ownerName, lossReason });
   }
