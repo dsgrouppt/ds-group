@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { usePathname } from "next/navigation";
-import { trackLeadConversion } from "@/lib/analytics";
+import { trackLeadConversion, getStoredAttribution } from "@/lib/analytics";
 
 type Status = "idle" | "submitting" | "success" | "error";
 
@@ -39,6 +39,11 @@ export function ContactForm({ formName = "Estudo de Viabilidade" }: { formName?:
     // de API ignora o pedido silenciosamente sem chamar o HubSpot.
     const honeypot = String(data.get("website") || "");
 
+    // Atribuição de origem guardada no primeiro touchpoint desta sessão
+    // (ver captureAttribution em lib/analytics.ts) — sobrevive a navegação
+    // interna entre a página de entrada (com UTMs/gclid/fbclid) e esta.
+    const attribution = getStoredAttribution();
+
     const payload = {
       firstname: String(data.get("firstname") || ""),
       email: String(data.get("email") || ""),
@@ -50,6 +55,14 @@ export function ContactForm({ formName = "Estudo de Viabilidade" }: { formName?:
       website: honeypot,
       pageUri: typeof window !== "undefined" ? window.location.href : pathname,
       pageName: formName,
+      utmSource: attribution.utmSource,
+      utmMedium: attribution.utmMedium,
+      utmCampaign: attribution.utmCampaign,
+      utmTerm: attribution.utmTerm,
+      utmContent: attribution.utmContent,
+      gclid: attribution.gclid,
+      fbclid: attribution.fbclid,
+      referrer: attribution.referrer,
     };
 
     try {
