@@ -65,7 +65,107 @@ const LeadIntakeSchema = z.object({
   message: z.string().max(5000).optional(),
   pageUri: z.string().max(500).optional(),
   pageName: z.string().max(200).optional(),
+  // Atribuicao de origem (UTM/gclid/fbclid) - ago/2026. Capturados no
+  // primeiro touchpoint pelo browser (website/src/lib/analytics.ts,
+  // captureAttribution) e encaminhados via website/src/app/api/contact.
+  // "referrer" e usado so para classificar "source" abaixo (classifySource)
+  // - nao e persistido como coluna propria no Deal.
+  utmSource: z.string().max(200).optional(),
+  utmMedium: z.string().max(200).optional(),
+  utmCampaign: z.string().max(200).optional(),
+  utmTerm: z.string().max(200).optional(),
+  utmContent: z.string().max(200).optional(),
+  gclid: z.string().max(300).optional(),
+  fbclid: z.string().max(300).optional(),
+  referrer: z.string().max(500).optional(),
 });
+
+/**
+ * Classificacao automatica de "source" (LEAD_SOURCE) a partir dos sinais de
+ * atribuicao capturados no browser - fecha o gap identificado na auditoria
+ * de tracking (ago/2026): antes, todo lead do site gravava sempre
+ * source=SITE, independentemente de vir de uma campanha paga.
+ *
+ * Ordem de precedencia (a primeira regra que corresponder, decide):
+ * 1) GOOGLE_ADS - gclid presente, ou utm_source=google + utm_medium pago.
+ * 2) META_ADS   - fbclid presente, ou utm_source de Meta + utm_medium pago.
+ * 3) GBP        - utm_source/utm_medium=gbp (tag explicita). Tem de vir
+ *    antes da deteccao de SEO organico porque o Google Business Profile
+ *    tambem aparece com referrer em google.*, e seria mal classificado
+ *    como pesquisa organica sem esta regra.
+ * 4) SEO_ORGANICO - utm_medium=organic, ou referrer de um motor de busca
+ *    conhecido, sem UTM de campanha.
+ * 5) REFERENCIA - ha referrer, nao e motor de busca nem o proprio dominio.
+ * 6) SITE (direto) - sem referrer, sem UTM, sem clique-id.
+ * 7) OUTRO - sobra qualquer combinacao de UTM que nao encaixe acima (ex.:
+ *    LinkedIn, email marketing) - fica pronto para uma categoria propria
+ *    no futuro se o volume justificar.
+ */
+const SEARCH_ENGINE_HOSTS = ["google.", "bing.com", "duckduckgo.com", "yahoo.co", "ecosia.org", "baidu.com"];
+
+function normalize(v: string | undefined): string {
+  return (v || "").trim().toLowerCase();
+}
+
+function hostnameOf(url: string | undefined): string | undefined {
+  if (!url) return undefined;
+  try {
+    return new URL(url).hostname.toLowerCase();
+  } catch {
+    return undefined;
+  }
+}
+
+function isSearchEngineReferrer(referrer: string | undefined): boolean {
+  const host = hostnameOf(referrer);
+  if (!host) return false;
+  return SEARCH_ENGINE_HOSTS.some((s) => host.includes(s));
+}
+
+function isOwnDomainReferrer(referrer: string | undefined): boolean {
+  const host = hostnameOf(referrer);
+  return !!host && host.endsWith("dsprojects.pt");
+}
+
+function classifySource(input: {
+  utmSource?: string;
+  utmMedium?: string;
+  gclid?: string;
+  fbclid?: string;
+  referrer?: string;
+}): string {
+  const utmSource = normalize(input.utmSource);
+  const utmMedium = normalize(input.utmMedium);
+
+  if (input.gclid || (utmSource === "google" && ["cpc", "ppc", "paidsearch"].includes(utmMedium))) {
+    return LEAD_SOURCE.GOOGLE_ADS;
+  }
+
+  if (
+    input.fbclid ||
+    (["facebook", "instagram", "meta", "fb", "ig"].includes(utmSource) && ["cpc", "paid", "paidsocial"].includes(utmMedium))
+  ) {
+    return LEAD_SOURCE.META_ADS;
+  }
+
+  if (utmSource === "gbp" || utmMedium === "gbp") {
+    return LEAD_SOURCE.GBP;
+  }
+
+  if (utmMedium === "organic" || isSearchEngineReferrer(input.referrer)) {
+    return LEAD_SOURCE.SEO_ORGANICO;
+  }
+
+  if (input.referrer && !isOwnDomainReferrer(input.referrer)) {
+    return LEAD_SOURCE.REFERENCIA;
+  }
+
+  if (!utmSource && !utmMedium && !input.gclid && !input.fbclid) {
+    return LEAD_SOURCE.SITE;
+  }
+
+  return LEAD_SOURCE.OUTRO;
+}
 
 export async function POST(request: NextRequest) {
   const expected = process.env.LEAD_INTAKE_TOKEN;
@@ -136,16 +236,31 @@ export async function POST(request: NextRequest) {
 
     const notesParts = [data.message?.trim(), data.pageUri ? `Origem: ${data.pageUri}` : undefined].filter(Boolean);
 
+    const source = classifySource({
+      utmSource: data.utmSource,
+      utmMedium: data.utmMedium,
+      gclid: data.gclid,
+      fbclid: data.fbclid,
+      referrer: data.referrer,
+    });
+
     const dealId = await prisma.$transaction(async (tx) => {
       const deal = await tx.deal.create({
         data: {
           title: `Lead site - ${data.name}`,
           clientId: client!.id,
-          source: LEAD_SOURCE.SITE,
+          source,
           projectType,
           budgetRange,
           notes: notesParts.length ? notesParts.join("\n\n") : undefined,
           ownerId: owner?.id,
+          utmSource: data.utmSource,
+          utmMedium: data.utmMedium,
+          utmCampaign: data.utmCampaign,
+          utmTerm: data.utmTerm,
+          utmContent: data.utmContent,
+          gclid: data.gclid,
+          fbclid: data.fbclid,
         },
       });
 
