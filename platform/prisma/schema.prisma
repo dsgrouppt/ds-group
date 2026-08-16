@@ -157,6 +157,21 @@ model Deal {
   gclid       String?
   fbclid      String?
 
+  // ── Meta Conversions API (CAPI) — adicionado ago/2026 ──
+  // metaLeadEventId: event_id gerado no browser no momento do submit do
+  // formulário (ver website/src/lib/analytics.ts, trackLeadConversion) e
+  // reenviado no evento CAPI equivalente (ver platform/src/lib/
+  // meta-capi.ts) — permite à Meta deduplicar o Pixel (browser) e o CAPI
+  // (servidor) como o mesmo evento "Lead", em vez de contar duas
+  // conversões. metaFbp/metaFbc: identificadores de correlação definidos
+  // pelo próprio Pixel da Meta (cookies _fbp/_fbc) no momento do lead,
+  // guardados para reutilização no evento de fecho de negócio
+  // (FECHADO_GANHO) — nessa altura já não há pedido do browser do
+  // visitante original disponível para os ler de novo.
+  metaLeadEventId String?
+  metaFbp         String?
+  metaFbc         String?
+
   // ── Processo comercial operacional (doc 05) — adicionado Fase 1, ago/2026 ──
   // firstContactedAt: quando a "Primeiro Contacto" (ver Task) foi de facto
   // concluída — mede o SLA real de resposta (doc 05 §2), distinto de
