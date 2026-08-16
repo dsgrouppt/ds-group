@@ -32,10 +32,10 @@ datasource db {
 
 // Role: "ADMIN" | "DIRECAO" | "COMERCIAL" | "GESTOR_PROJETO" | "FINANCEIRO" | "RH" | "MARKETING"
 model User {
-  id           String    @id @default(cuid())
-  name         String
-  email        String    @unique
-  passwordHash String
+  id                String    @id @default(cuid())
+  name              String
+  email             String    @unique
+  passwordHash      String
   // Marcado sempre que a password muda (reposição por um admin ou
   // alteração pelo próprio em "O Meu Perfil") — usado por auth.ts para
   // revogar imediatamente sessões já emitidas antes da mudança, em vez de
@@ -43,10 +43,10 @@ model User {
   // password de uma conta comprometida bloqueava novos logins mas não
   // terminava uma sessão já aberta por um atacante.
   passwordChangedAt DateTime?
-  role         String    @default("COMERCIAL")
-  active       Boolean   @default(true)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  role              String    @default("COMERCIAL")
+  active            Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   employee      Employee?
   dealsOwned    Deal[]        @relation("DealOwner")
@@ -59,7 +59,7 @@ model User {
 
   // Módulo "Site — Portefólio" (ver secção WEBSITE / CMS INTERNO, fundo do
   // ficheiro) — quem criou/editou cada obra ou testemunho publicável no site.
-  websiteCaseStudiesCreated  WebsiteCaseStudy[]  @relation("WebsiteCaseStudyCreatedBy")
+  websiteCaseStudiesCreated  WebsiteCaseStudy[]   @relation("WebsiteCaseStudyCreatedBy")
   websiteTestimonialsCreated WebsiteTestimonial[] @relation("WebsiteTestimonialCreatedBy")
 }
 
@@ -85,12 +85,12 @@ model Client {
   // portalActive controla, por cliente, se o login está disponível: o
   // gestor de projeto ativa isto manualmente (ver docs/pendencias-tecnicas.md
   // — a definir: fluxo de convite/definição de password em Definições).
-  passwordHash String?
+  passwordHash      String?
   // Ver o mesmo campo em User — mesma finalidade de revogação imediata de
   // sessão, aplicada ao Portal do Cliente.
   passwordChangedAt DateTime?
-  portalActive Boolean   @default(false)
-  lastLoginAt  DateTime?
+  portalActive      Boolean   @default(false)
+  lastLoginAt       DateTime?
 
   deals       Deal[]
   projects    Project[]
@@ -140,11 +140,28 @@ model Deal {
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
+  // ── Atribuição de origem (UTM/gclid/fbclid) — adicionado ago/2026 ──
+  // Capturados no primeiro touchpoint do visitante no site (antes de
+  // qualquer navegação interna) e persistidos até à submissão do
+  // formulário — ver website/src/lib/analytics.ts (captureAttribution).
+  // Todos opcionais e aditivos — negócios existentes ficam com estes
+  // campos a null, sem qualquer impacto. "source" (acima) continua a ser
+  // a classificação agregada (enum LEAD_SOURCE); estes campos preservam o
+  // valor granular original da campanha para reporting e para uma futura
+  // integração de conversões (Google Ads / Meta CAPI).
+  utmSource   String?
+  utmMedium   String?
+  utmCampaign String?
+  utmTerm     String?
+  utmContent  String?
+  gclid       String?
+  fbclid      String?
+
   // ── Processo comercial operacional (doc 05) — adicionado Fase 1, ago/2026 ──
   // firstContactedAt: quando a "Primeiro Contacto" (ver Task) foi de facto
   // concluída — mede o SLA real de resposta (doc 05 §2), distinto de
   // createdAt (entrada do lead). Nulo enquanto o lead não foi contactado.
-  firstContactedAt     DateTime?
+  firstContactedAt      DateTime?
   // qualificationScore/qualificationCategory: resultado do formulário de
   // qualificação (doc 05 §3, 5 critérios de 0–2 pontos, máx. 10). Só
   // preenchidos quando o negócio passa pela etapa "Qualificado" — nulos
@@ -410,13 +427,13 @@ model ActivityLog {
 // `false` — um ficheiro só aparece no portal depois de o gestor de projeto
 // o marcar explicitamente como visível (nunca automático).
 model Attachment {
-  id             String  @id @default(cuid())
-  filename       String // nome gerado (único em disco)
-  originalName   String // nome original do ficheiro enviado
-  mimeType       String
-  size           Int
-  path           String // caminho relativo dentro da pasta de armazenamento
-  kind           String  @default("OUTRO")
+  id              String  @id @default(cuid())
+  filename        String // nome gerado (único em disco)
+  originalName    String // nome original do ficheiro enviado
+  mimeType        String
+  size            Int
+  path            String // caminho relativo dentro da pasta de armazenamento
+  kind            String  @default("OUTRO")
   visibleToClient Boolean @default(false)
 
   client    Client?  @relation(fields: [clientId], references: [id], onDelete: Cascade)
@@ -444,17 +461,17 @@ model Attachment {
 // tanto no Portal do Cliente como (a construir) num painel de mensagens
 // dentro do módulo Obras da equipa interna.
 model ClientMessage {
-  id         String   @id @default(cuid())
-  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  projectId  String
-  client     Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  clientId   String
-  authorType String
-  authorName String
-  body       String
-  readByTeam   Boolean @default(false)
-  readByClient Boolean @default(false)
-  createdAt  DateTime @default(now())
+  id           String   @id @default(cuid())
+  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId    String
+  client       Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId     String
+  authorType   String
+  authorName   String
+  body         String
+  readByTeam   Boolean  @default(false)
+  readByClient Boolean  @default(false)
+  createdAt    DateTime @default(now())
 
   @@index([projectId])
   @@index([clientId])
@@ -532,12 +549,12 @@ model Notification {
 // premium | cozinhas | casas-de-banho | moradias | comercial)
 // status: DRAFT | PUBLISHED — só entra no "Exportar conteúdo" quando PUBLISHED.
 model WebsiteCaseStudy {
-  id          String  @id @default(cuid())
-  slug        String  @unique
-  title       String
-  category    String
-  location    String
-  summary     String
+  id       String @id @default(cuid())
+  slug     String @unique
+  title    String
+  category String
+  location String
+  summary  String
 
   // Estrutura narrativa — todos opcionais, tal como no website (ver CaseStudy
   // em website/src/types/index.ts).
@@ -558,10 +575,10 @@ model WebsiteCaseStudy {
   project   Project? @relation(fields: [projectId], references: [id])
   projectId String?  @unique
 
-  media WebsiteMediaAsset[]
+  media        WebsiteMediaAsset[]
   testimonials WebsiteTestimonial[]
 
-  createdBy   User?   @relation("WebsiteCaseStudyCreatedBy", fields: [createdById], references: [id])
+  createdBy   User?    @relation("WebsiteCaseStudyCreatedBy", fields: [createdById], references: [id])
   createdById String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -573,7 +590,7 @@ model WebsiteCaseStudy {
 // kind: "foto" | "video" — role: "cover" | "gallery" | "video"
 // phase (só relevante para kind "foto" em role "gallery"): "antes" | "durante" | "depois"
 model WebsiteMediaAsset {
-  id          String @id @default(cuid())
+  id          String           @id @default(cuid())
   caseStudy   WebsiteCaseStudy @relation(fields: [caseStudyId], references: [id], onDelete: Cascade)
   caseStudyId String
 
@@ -585,7 +602,7 @@ model WebsiteMediaAsset {
   embedUrl    String? // YouTube/Vimeo, quando kind = "video"
   alt         String?
   caption     String?
-  sortOrder   Int    @default(0)
+  sortOrder   Int     @default(0)
 
   @@index([caseStudyId])
 }
@@ -605,7 +622,7 @@ model WebsiteTestimonial {
   caseStudy   WebsiteCaseStudy? @relation(fields: [caseStudyId], references: [id])
   caseStudyId String?
 
-  createdBy   User?   @relation("WebsiteTestimonialCreatedBy", fields: [createdById], references: [id])
+  createdBy   User?    @relation("WebsiteTestimonialCreatedBy", fields: [createdById], references: [id])
   createdById String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
