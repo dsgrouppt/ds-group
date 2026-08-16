@@ -5,6 +5,7 @@ import { firstContactDueAt } from "@/lib/sla";
 import { notifyLeadNovo } from "@/lib/notifications";
 import { LEAD_SOURCE, PROJECT_TYPE, BUDGET_RANGE } from "@/lib/enums";
 import { consume } from "@/lib/rate-limit";
+import { sendCapiEvent } from "@/lib/meta-capi";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -65,11 +66,6 @@ const LeadIntakeSchema = z.object({
   message: z.string().max(5000).optional(),
   pageUri: z.string().max(500).optional(),
   pageName: z.string().max(200).optional(),
-  // Atribuicao de origem (UTM/gclid/fbclid) - ago/2026. Capturados no
-  // primeiro touchpoint pelo browser (website/src/lib/analytics.ts,
-  // captureAttribution) e encaminhados via website/src/app/api/contact.
-  // "referrer" e usado so para classificar "source" abaixo (classifySource)
-  // - nao e persistido como coluna propria no Deal.
   utmSource: z.string().max(200).optional(),
   utmMedium: z.string().max(200).optional(),
   utmCampaign: z.string().max(200).optional(),
@@ -78,29 +74,13 @@ const LeadIntakeSchema = z.object({
   gclid: z.string().max(300).optional(),
   fbclid: z.string().max(300).optional(),
   referrer: z.string().max(500).optional(),
+  metaEventId: z.string().max(100).optional(),
+  clientIp: z.string().max(100).optional(),
+  userAgent: z.string().max(500).optional(),
+  fbp: z.string().max(200).optional(),
+  fbc: z.string().max(300).optional(),
 });
 
-/**
- * Classificacao automatica de "source" (LEAD_SOURCE) a partir dos sinais de
- * atribuicao capturados no browser - fecha o gap identificado na auditoria
- * de tracking (ago/2026): antes, todo lead do site gravava sempre
- * source=SITE, independentemente de vir de uma campanha paga.
- *
- * Ordem de precedencia (a primeira regra que corresponder, decide):
- * 1) GOOGLE_ADS - gclid presente, ou utm_source=google + utm_medium pago.
- * 2) META_ADS   - fbclid presente, ou utm_source de Meta + utm_medium pago.
- * 3) GBP        - utm_source/utm_medium=gbp (tag explicita). Tem de vir
- *    antes da deteccao de SEO organico porque o Google Business Profile
- *    tambem aparece com referrer em google.*, e seria mal classificado
- *    como pesquisa organica sem esta regra.
- * 4) SEO_ORGANICO - utm_medium=organic, ou referrer de um motor de busca
- *    conhecido, sem UTM de campanha.
- * 5) REFERENCIA - ha referrer, nao e motor de busca nem o proprio dominio.
- * 6) SITE (direto) - sem referrer, sem UTM, sem clique-id.
- * 7) OUTRO - sobra qualquer combinacao de UTM que nao encaixe acima (ex.:
- *    LinkedIn, email marketing) - fica pronto para uma categoria propria
- *    no futuro se o volume justificar.
- */
 const SEARCH_ENGINE_HOSTS = ["google.", "bing.com", "duckduckgo.com", "yahoo.co", "ecosia.org", "baidu.com"];
 
 function normalize(v: string | undefined): string {
@@ -195,10 +175,6 @@ export async function POST(request: NextRequest) {
   const data = parsed.data;
   const email = data.email.toLowerCase().trim();
 
-  // Defesa adicional para alem do token partilhado - limite generoso, so
-  // para conter um bug de reenvio em loop do lado do site, nao e a
-  // protecao principal (essa e o rate limit ja aplicado no proprio
-  // formulario do site, website/src/app/api/contact/route.ts).
   if (!consume(`lead-intake:${email}`, 5, 60 * 60 * 1000)) {
     return NextResponse.json({ ok: true, throttled: true });
   }
@@ -261,6 +237,9 @@ export async function POST(request: NextRequest) {
           utmContent: data.utmContent,
           gclid: data.gclid,
           fbclid: data.fbclid,
+          metaLeadEventId: data.metaEventId,
+          metaFbp: data.fbp,
+          metaFbc: data.fbc,
         },
       });
 
@@ -291,7 +270,38 @@ export async function POST(request: NextRequest) {
       dueAt: primeiroContactoDueAt,
     });
 
-    return NextResponse.json({ ok: true, dealId, clientId: client.id });
+    // Evento Meta CAPI "Lead" (ago/2026) — deliberadamente FORA da
+    // transação e depois da notificação, mesmo motivo já documentado
+    // acima: uma chamada de rede externa nunca pode prender/reverter uma
+    // escrita já confirmada. Nunca corre no caminho "existingOpenDeal"
+    // acima (return antecipado) — evita enviar dois eventos "Lead" à Meta
+    // para o mesmo pedido duplicado/reenviado.
+    const capiResult = await sendCapiEvent({
+      eventName: "Lead",
+      eventId: data.metaEventId,
+      eventSourceUrl: data.pageUri,
+      actionSource: "website",
+      userData: {
+        email,
+        phone: data.phone,
+        clientIp: data.clientIp,
+        userAgent: data.userAgent,
+        fbp: data.fbp,
+        fbc: data.fbc,
+        fbclid: data.fbclid,
+      },
+      customData: data.pageName ? { content_name: data.pageName } : undefined,
+    });
+    if (!capiResult.ok) {
+      console.error("[lead-intake] Evento CAPI \"Lead\" não enviado:", capiResult.error);
+    }
+
+    return NextResponse.json({
+      ok: true,
+      dealId,
+      clientId: client.id,
+      capi: { sent: capiResult.ok, eventsReceived: capiResult.eventsReceived },
+    });
   } catch (err) {
     console.error("[lead-intake] Falha ao criar lead automatico:", err);
     return NextResponse.json({ ok: false, error: err instanceof Error ? err.message : "erro_desconhecido" }, { status: 500 });
