@@ -44,6 +44,16 @@ export function ContactForm({ formName = "Estudo de Viabilidade" }: { formName?:
     // interna entre a página de entrada (com UTMs/gclid/fbclid) e esta.
     const attribution = getStoredAttribution();
 
+    // event_id partilhado entre o Pixel (browser, mais abaixo em
+    // trackLeadConversion) e o Meta CAPI (servidor, platform/src/lib/
+    // meta-capi.ts) — gerado uma única vez aqui e reenviado nos dois lados
+    // do mesmo evento "Lead", para a Meta deduplicar em vez de contar duas
+    // conversões (ago/2026).
+    const metaEventId =
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `lead-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
     const payload = {
       firstname: String(data.get("firstname") || ""),
       email: String(data.get("email") || ""),
@@ -63,6 +73,7 @@ export function ContactForm({ formName = "Estudo de Viabilidade" }: { formName?:
       gclid: attribution.gclid,
       fbclid: attribution.fbclid,
       referrer: attribution.referrer,
+      metaEventId,
     };
 
     try {
@@ -78,7 +89,7 @@ export function ContactForm({ formName = "Estudo de Viabilidade" }: { formName?:
       }
 
       setStatus("success");
-      trackLeadConversion(formName);
+      trackLeadConversion(formName, metaEventId);
       form.reset();
     } catch (err) {
       setStatus("error");
