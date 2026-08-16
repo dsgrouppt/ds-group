@@ -3,7 +3,7 @@
 import Script from "next/script";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
-import { trackPageview } from "@/lib/analytics";
+import { trackPageview, captureAttribution } from "@/lib/analytics";
 
 const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID;
 const GA_ID = process.env.NEXT_PUBLIC_GA_ID;
@@ -97,6 +97,9 @@ export function AnalyticsPageView() {
     const query = searchParams?.toString();
     const url = query ? `${pathname}?${query}` : pathname;
     trackPageview(url);
+    // Atribuição de origem (UTM/gclid/fbclid) — só grava no primeiro
+    // touchpoint da sessão, ver captureAttribution() em lib/analytics.ts.
+    if (searchParams) captureAttribution(searchParams);
   }, [pathname, searchParams]);
 
   return null;
