@@ -28,14 +28,28 @@ export function trackPageview(url: string): void {
   }
 }
 
-/** Disparar quando um lead é gerado com sucesso (submissão do formulário). */
-export function trackLeadConversion(formName: string): void {
+/**
+ * Disparar quando um lead é gerado com sucesso (submissão do formulário).
+ *
+ * eventId (opcional, ago/2026 — Meta CAPI): quando presente, é passado ao
+ * fbq como eventID de terceiro argumento — o MESMO valor é reenviado pelo
+ * DS OS no evento "Lead" equivalente via Conversions API (ver
+ * platform/src/lib/meta-capi.ts, chamado a partir de platform/src/app/api/
+ * internal/lead-intake/route.ts). A Meta usa este par para deduplicar as
+ * duas fontes do mesmo evento real (Pixel do browser + CAPI do servidor)
+ * em vez de contar duas conversões "Lead" para o mesmo pedido.
+ */
+export function trackLeadConversion(formName: string, eventId?: string): void {
   pushDataLayer({ event: "generate_lead", form_name: formName });
   if (typeof window !== "undefined" && window.gtag) {
     window.gtag("event", "generate_lead", { form_name: formName });
   }
   if (typeof window !== "undefined" && window.fbq) {
-    window.fbq("track", "Lead", { content_name: formName });
+    if (eventId) {
+      window.fbq("track", "Lead", { content_name: formName }, { eventID: eventId });
+    } else {
+      window.fbq("track", "Lead", { content_name: formName });
+    }
   }
 }
 
