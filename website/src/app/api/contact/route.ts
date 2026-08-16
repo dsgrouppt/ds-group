@@ -27,6 +27,10 @@ interface ContactPayload {
   gclid?: string;
   fbclid?: string;
   referrer?: string;
+  // event_id partilhado com o Pixel do browser para deduplicação no Meta
+  // CAPI (ago/2026) — ver website/src/lib/analytics.ts (trackLeadConversion)
+  // e platform/src/lib/meta-capi.ts.
+  metaEventId?: string;
 }
 
 function isValidEmail(email: string): boolean {
@@ -54,6 +58,18 @@ async function notifyDsOs(body: ContactPayload): Promise<void> {
   }
   const baseUrl = process.env.DS_OS_INTERNAL_URL || "https://os.dsprojects.pt";
 
+  // Sinais observáveis apenas pelo servidor (nunca pelo browser do
+  // visitante) para o evento Meta CAPI "Lead" (ago/2026, ver
+  // platform/src/lib/meta-capi.ts): IP real do visitante (o DS OS, ao
+  // receber este pedido servidor-a-servidor, só veria o IP da própria
+  // Vercel — por isso tem de vir daqui), user-agent, e os cookies _fbp/
+  // _fbc que o próprio Pixel da Meta define no browser do visitante.
+  const clientIp =
+    headers().get("x-forwarded-for")?.split(",")[0]?.trim() || headers().get("x-real-ip") || undefined;
+  const userAgent = headers().get("user-agent") || undefined;
+  const fbp = cookies().get("_fbp")?.value;
+  const fbc = cookies().get("_fbc")?.value;
+
   try {
     const res = await fetch(`${baseUrl}/api/internal/lead-intake`, {
       method: "POST",
@@ -75,6 +91,11 @@ async function notifyDsOs(body: ContactPayload): Promise<void> {
         gclid: body.gclid,
         fbclid: body.fbclid,
         referrer: body.referrer,
+        metaEventId: body.metaEventId,
+        clientIp,
+        userAgent,
+        fbp,
+        fbc,
       }),
       signal: AbortSignal.timeout(8000),
     });
