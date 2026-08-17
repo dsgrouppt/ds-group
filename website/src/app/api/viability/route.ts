@@ -4,6 +4,8 @@ import { consume } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
+// Republicado após falha de webhook GitHub->Vercel no primeiro push (ago/2026).
+
 function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
