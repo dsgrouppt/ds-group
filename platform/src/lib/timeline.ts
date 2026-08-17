@@ -17,16 +17,19 @@ import { TASK_STATUS_LABEL } from "@/lib/enums";
  *    de proposta é hoje só uma mudança de stage ("PROPOSTA_ENVIADA",
  *    capturada via ActivityLog action=STAGE_CHANGE) + anexos (Attachment).
  *    Anexos não estão incluídos nesta primeira versão da timeline.
- *  - Email: não existe ainda nenhum registo de email associado a
- *    Client/Deal no schema (ver Prioridade 6 do mesmo pedido) — quando essa
- *    associação existir, entra aqui como mais uma fonte.
+ *  - Email: EmailThread/EmailMessage (Prioridade 6) já entram aqui como
+ *    mais uma fonte, associados por Client (não por Deal — email é
+ *    correspondência ao nível do cliente, tal como o WhatsApp quando não
+ *    está ligado a um negócio específico). O canal em si só fica ativo
+ *    quando RESEND_INBOUND_WEBHOOK_SECRET existir (ver src/lib/email-inbound.ts)
+ *    — até lá, esta fonte simplesmente não devolve eventos.
  *  - Chamadas telefónicas: não há nenhum registo estruturado disto em lado
  *    nenhum do DS OS (nem antes desta ronda) — fora do alcance.
  */
 
 export interface TimelineEvent {
   id: string;
-  type: "CREATE" | "UPDATE" | "DELETE" | "STAGE_CHANGE" | "QUALIFICATION" | "WHATSAPP_IN" | "WHATSAPP_OUT" | "TASK";
+  type: "CREATE" | "UPDATE" | "DELETE" | "STAGE_CHANGE" | "QUALIFICATION" | "WHATSAPP_IN" | "WHATSAPP_OUT" | "EMAIL_IN" | "EMAIL_OUT" | "TASK";
   label: string;
   detail?: string;
   createdAt: Date;
@@ -47,7 +50,7 @@ const ACTIVITY_LABEL: Record<string, string> = {
  * existe sem um cliente e o utilizador quer ver os dois juntos.
  */
 export async function getDealTimeline(dealId: string, clientId: string): Promise<TimelineEvent[]> {
-  const [activity, waConversations, tasks] = await Promise.all([
+  const [activity, waConversations, tasks, emailThreads] = await Promise.all([
     prisma.activityLog.findMany({
       where: {
         OR: [
@@ -81,6 +84,15 @@ export async function getDealTimeline(dealId: string, clientId: string): Promise
       orderBy: { createdAt: "desc" },
       take: 300,
     }),
+    prisma.emailThread.findMany({
+      where: { clientId },
+      include: {
+        messages: {
+          orderBy: { createdAt: "desc" },
+          take: 300,
+        },
+      },
+    }),
   ]);
 
   const events: TimelineEvent[] = [];
@@ -112,6 +124,21 @@ export async function getDealTimeline(dealId: string, clientId: string): Promise
     }
   }
 
+  for (const thread of emailThreads) {
+    for (const msg of thread.messages) {
+      const isInbound = msg.direction === "INBOUND";
+      events.push({
+        id: `email-${msg.id}`,
+        type: isInbound ? "EMAIL_IN" : "EMAIL_OUT",
+        label: isInbound
+          ? `Email recebido de ${thread.participantEmail}${msg.subject ? ` — ${msg.subject}` : ""}`
+          : `Email enviado para ${thread.participantEmail}${msg.subject ? ` — ${msg.subject}` : ""}`,
+        detail: msg.bodyText ?? undefined,
+        createdAt: msg.createdAt,
+      });
+    }
+  }
+
   for (const task of tasks) {
     events.push({
       id: `task-${task.id}`,
@@ -132,7 +159,7 @@ export async function getDealTimeline(dealId: string, clientId: string): Promise
  * usada na ficha do cliente (não apenas na ficha de um negócio específico).
  */
 export async function getClientTimeline(clientId: string): Promise<TimelineEvent[]> {
-  const [activity, waConversations, tasks] = await Promise.all([
+  const [activity, waConversations, tasks, emailThreads] = await Promise.all([
     prisma.activityLog.findMany({
       where: { entity: "Client", entityId: clientId },
       include: { user: { select: { name: true } } },
@@ -161,6 +188,15 @@ export async function getClientTimeline(clientId: string): Promise<TimelineEvent
       orderBy: { createdAt: "desc" },
       take: 300,
     }),
+    prisma.emailThread.findMany({
+      where: { clientId },
+      include: {
+        messages: {
+          orderBy: { createdAt: "desc" },
+          take: 300,
+        },
+      },
+    }),
   ]);
 
   const events: TimelineEvent[] = [];
@@ -188,6 +224,21 @@ export async function getClientTimeline(clientId: string): Promise<TimelineEvent
         detail: msg.body ?? (msg.templateName ? `Template: ${msg.templateName}` : undefined),
         createdAt: msg.createdAt,
         actor: msg.sentBy?.name,
+      });
+    }
+  }
+
+  for (const thread of emailThreads) {
+    for (const msg of thread.messages) {
+      const isInbound = msg.direction === "INBOUND";
+      events.push({
+        id: `email-${msg.id}`,
+        type: isInbound ? "EMAIL_IN" : "EMAIL_OUT",
+        label: isInbound
+          ? `Email recebido de ${thread.participantEmail}${msg.subject ? ` — ${msg.subject}` : ""}`
+          : `Email enviado para ${thread.participantEmail}${msg.subject ? ` — ${msg.subject}` : ""}`,
+        detail: msg.bodyText ?? undefined,
+        createdAt: msg.createdAt,
       });
     }
   }
