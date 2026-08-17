@@ -10,7 +10,7 @@
 
 1. **Identificação das partes** — DS Projects (empresa, NIF, morada) e Cliente (nome/empresa, NIF, morada).
 2. **Objeto do contrato** — descrição do projeto, morada do imóvel, referência à memória descritiva e caderno de encargos anexos.
-3. **Valor e condições de pagamento** — valor total, faseamento (ex.: 30% sinal / 40% a meio da obra / 30% na entrega), condições de revisão de preço por alteração de âmbito.
+3. **Valor e condições de pagamento** — valor total, faseamento (ex.: 40% adjudicação / 40% fase intermédia / 20% na entrega), condições de revisão de preço por alteração de âmbito.
 4. **Prazo de execução** — data de início, data de conclusão prevista, cláusula de penalização por atraso não justificado, cláusula de prorrogação justificada (força maior, alterações pedidas pelo cliente).
 5. **Alterações ao projeto (trabalhos a mais/a menos)** — processo formal de aprovação por escrito antes de qualquer alteração de âmbito ou valor.
 6. **Garantia** — período de garantia sobre mão de obra e materiais, processo de acionamento.
@@ -53,7 +53,7 @@ Cliente: ___ | Projeto: ___ | Data: ___ | Validade da proposta: 30 dias
 | 6. Gestão de projeto e coordenação | — | € |
 | **Total** | | **€** |
 
-Condições de pagamento: 30% sinal / 40% a meio da execução / 30% na entrega.
+Condições de pagamento: 40% adjudicação / 40% a meio da execução / 20% na entrega.
 Prazo estimado de execução: ___ semanas.
 Nota: valores apresentados por fase de execução, nunca por ofício isolado (pintura, eletricidade, etc.) — reforça a comunicação de "gestão integral", conforme Brand Book.
 
