@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState, type ChangeEvent, type FormEvent } from "react";
-import { trackCtaClick, trackLeadConversion } from "@/lib/analytics";
+import { trackCtaClick, trackLeadConversion, getStoredAttribution } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 
 type Status = "idle" | "submitting" | "success" | "error";
@@ -88,8 +88,49 @@ interface UploadedFile {
 const STEP_LABELS = ["O Espaço", "Âmbito e Orçamento", "Objetivos", "Documentos", "Contacto", "Resumo"];
 const TOTAL_STEPS = STEP_LABELS.length;
 
+/**
+ * Limites de anexos (ago/2026 — bug crítico de produção: a Vercel rejeita
+ * pedidos acima de ~4,5 MB com HTTP 413, o que perdia a submissão inteira
+ * — incluindo os dados de contacto, não só os ficheiros. Estes limites
+ * ficam deliberadamente bem abaixo desse teto (o multipart/form-data já
+ * inclui os restantes campos + overhead de boundaries), para nunca deixar
+ * o visitante compor um pedido que a Vercel vai recusar. Validados aqui
+ * (client-side, antes do submit) E outra vez no servidor (defesa em
+ * profundidade — ver website/src/app/api/viability/route.ts), porque um
+ * pedido também pode chegar sem passar por este componente.
+ */
+const MAX_FILE_SIZE_BYTES = 4 * 1024 * 1024; // 4 MB por ficheiro
+const MAX_TOTAL_SIZE_BYTES = 4 * 1024 * 1024; // 4 MB no total (soma de todos os anexos)
+const ALLOWED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif", ".pdf", ".dwg"];
+const ALLOWED_MIME_PREFIXES = ["image/"];
+const ALLOWED_MIME_EXACT = ["application/pdf"];
+
 function isImage(file: File) {
   return file.type.startsWith("image/");
+}
+
+function formatSize(bytes: number): string {
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function hasAllowedExtension(name: string): boolean {
+  const lower = name.toLowerCase();
+  return ALLOWED_EXTENSIONS.some((ext) => lower.endsWith(ext));
+}
+
+/**
+ * Ficheiros .dwg tipicamente chegam do browser com type="" (mime
+ * desconhecido) — por isso a validação de tipo aceita SEMPRE pela
+ * extensão em primeiro lugar, e só recorre ao mime real como reforço
+ * para os formatos que o browser identifica com fiabilidade (imagens,
+ * PDF).
+ */
+function isAllowedFileType(file: File): boolean {
+  if (hasAllowedExtension(file.name)) return true;
+  if (ALLOWED_MIME_EXACT.includes(file.type)) return true;
+  if (ALLOWED_MIME_PREFIXES.some((prefix) => file.type.startsWith(prefix))) return true;
+  return false;
 }
 
 export function ViabilityWizard() {
@@ -98,10 +139,12 @@ export function ViabilityWizard() {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [status, setStatus] = useState<Status>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [fileErrors, setFileErrors] = useState<string[]>([]);
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const progress = useMemo(() => Math.round((step / TOTAL_STEPS) * 100), [step]);
+  const totalFileSize = useMemo(() => files.reduce((sum, f) => sum + f.file.size, 0), [files]);
 
   function update<K extends keyof WizardData>(key: K, value: WizardData[K]) {
     setData((prev) => ({ ...prev, [key]: value }));
@@ -116,18 +159,50 @@ export function ViabilityWizard() {
     }));
   }
 
+  /**
+   * Valida cada ficheiro (tipo + tamanho individual + tamanho total
+   * acumulado) ANTES de o aceitar no estado do wizard. Ficheiros
+   * rejeitados nunca chegam a ser adicionados a `files` — logo nunca
+   * chegam a ser submetidos — e o motivo da rejeição fica visível ao
+   * visitante, em vez de falhar silenciosamente só no submit final.
+   */
   function addFiles(fileList: FileList | null) {
     if (!fileList) return;
-    const next: UploadedFile[] = Array.from(fileList).map((file) => ({
-      file,
-      id: `${file.name}-${file.size}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      previewUrl: isImage(file) ? URL.createObjectURL(file) : undefined,
-    }));
-    setFiles((prev) => [...prev, ...next]);
+
+    const rejected: string[] = [];
+    const accepted: UploadedFile[] = [];
+    let runningTotal = totalFileSize;
+
+    Array.from(fileList).forEach((file) => {
+      if (!isAllowedFileType(file)) {
+        rejected.push(`${file.name} — formato não aceite (use PDF, JPG, PNG ou DWG).`);
+        return;
+      }
+      if (file.size > MAX_FILE_SIZE_BYTES) {
+        rejected.push(`${file.name} (${formatSize(file.size)}) — excede o limite de ${formatSize(MAX_FILE_SIZE_BYTES)} por ficheiro.`);
+        return;
+      }
+      if (runningTotal + file.size > MAX_TOTAL_SIZE_BYTES) {
+        rejected.push(`${file.name} (${formatSize(file.size)}) — excede o limite total de ${formatSize(MAX_TOTAL_SIZE_BYTES)} para todos os anexos.`);
+        return;
+      }
+      runningTotal += file.size;
+      accepted.push({
+        file,
+        id: `${file.name}-${file.size}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        previewUrl: isImage(file) ? URL.createObjectURL(file) : undefined,
+      });
+    });
+
+    if (accepted.length > 0) {
+      setFiles((prev) => [...prev, ...accepted]);
+    }
+    setFileErrors(rejected);
   }
 
   function removeFile(id: string) {
     setFiles((prev) => prev.filter((f) => f.id !== id));
+    setFileErrors([]);
   }
 
   function canAdvance(current: number): boolean {
@@ -162,8 +237,30 @@ export function ViabilityWizard() {
       return;
     }
 
+    // Defesa final antes do fetch — mesmo que o estado tenha ficado
+    // inconsistente por algum motivo, nunca deixar sair um pedido que a
+    // Vercel vai recusar com 413.
+    if (totalFileSize > MAX_TOTAL_SIZE_BYTES) {
+      setStatus("error");
+      setErrorMessage(
+        `Os anexos ultrapassam o limite total de ${formatSize(MAX_TOTAL_SIZE_BYTES)}. Remova ou reduza ficheiros antes de enviar.`
+      );
+      setStep(4);
+      return;
+    }
+
     setStatus("submitting");
     setErrorMessage(null);
+
+    // event_id partilhado entre o Pixel (browser, trackLeadConversion mais
+    // abaixo) e o Meta CAPI (servidor, via DS OS lead-intake) — mesmo
+    // padrão já usado em ContactForm.tsx, para a Meta deduplicar as duas
+    // fontes do mesmo evento "Lead" em vez de contar duas conversões.
+    const metaEventId =
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `lead-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const attribution = getStoredAttribution();
 
     const payload = new FormData();
     Object.entries(data).forEach(([key, value]) => {
@@ -176,14 +273,31 @@ export function ViabilityWizard() {
     payload.append("fileCount", String(files.length));
     files.forEach((f) => payload.append("attachments", f.file, f.file.name));
 
+    payload.append("pageUri", typeof window !== "undefined" ? window.location.href : "");
+    payload.append("pageName", "Estudo de Viabilidade — Wizard");
+    payload.append("metaEventId", metaEventId);
+    if (attribution.utmSource) payload.append("utmSource", attribution.utmSource);
+    if (attribution.utmMedium) payload.append("utmMedium", attribution.utmMedium);
+    if (attribution.utmCampaign) payload.append("utmCampaign", attribution.utmCampaign);
+    if (attribution.utmTerm) payload.append("utmTerm", attribution.utmTerm);
+    if (attribution.utmContent) payload.append("utmContent", attribution.utmContent);
+    if (attribution.gclid) payload.append("gclid", attribution.gclid);
+    if (attribution.fbclid) payload.append("fbclid", attribution.fbclid);
+    if (attribution.referrer) payload.append("referrer", attribution.referrer);
+
     try {
       const res = await fetch("/api/viability", { method: "POST", body: payload });
       if (!res.ok) {
+        if (res.status === 413) {
+          throw new Error(
+            "Os ficheiros anexados são demasiado grandes para este pedido. Reduza o tamanho ou o número de anexos e tente novamente."
+          );
+        }
         const body = await res.json().catch(() => ({}));
         throw new Error(body?.error || "Não foi possível enviar o pedido.");
       }
       setStatus("success");
-      trackLeadConversion("Estudo de Viabilidade — Wizard");
+      trackLeadConversion("Estudo de Viabilidade — Wizard", metaEventId);
     } catch (err) {
       setStatus("error");
       setErrorMessage(err instanceof Error ? err.message : "Erro inesperado. Tente novamente.");
@@ -191,6 +305,7 @@ export function ViabilityWizard() {
   }
 
   if (status === "success") {
+    const attachedCount = files.length;
     return (
       <div className="wizard-success">
         <div className="eyebrow">Pedido Recebido</div>
@@ -199,8 +314,10 @@ export function ViabilityWizard() {
         </h3>
         <p className="text-graphite font-light leading-[1.8] max-w-[52ch]">
           Um gestor de projeto sénior da DS Projects vai rever tudo o que partilhou e contactá-lo(a)
-          nas próximas horas úteis para agendar a visita técnica — sem compromisso. Se anexou plantas
-          ou fotografias, elas já seguem junto com o pedido para os primeiros olhares.
+          nas próximas horas úteis para agendar a visita técnica — sem compromisso.
+          {attachedCount > 0
+            ? ` Registámos ${attachedCount} ficheiro${attachedCount > 1 ? "s" : ""} indicado${attachedCount > 1 ? "s" : ""} no seu pedido (${files.map((f) => f.file.name).join(", ")}); o gestor de projeto vai pedir-lhos diretamente no primeiro contacto para confirmar a receção em boas condições.`
+            : ""}
         </p>
       </div>
     );
@@ -342,7 +459,8 @@ export function ViabilityWizard() {
             </h3>
             <p className="text-graphite font-light text-[.92rem] mb-7 max-w-[52ch]">
               Totalmente opcional nesta fase — mas acelera a preparação da visita técnica. Aceita
-              PDF, JPG, PNG ou DWG.
+              PDF, JPG, PNG ou DWG, até {formatSize(MAX_FILE_SIZE_BYTES)} por ficheiro e{" "}
+              {formatSize(MAX_TOTAL_SIZE_BYTES)} no total.
             </p>
 
             <div
@@ -362,31 +480,48 @@ export function ViabilityWizard() {
                 ref={fileInputRef}
                 type="file"
                 multiple
-                accept="image/*,.pdf,.dwg"
+                accept="image/*,.pdf,.dwg,.heic,.heif"
                 className="sr-only"
-                onChange={(e: ChangeEvent<HTMLInputElement>) => addFiles(e.target.files)}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                  addFiles(e.target.files);
+                  // Permite voltar a escolher o mesmo ficheiro depois de o remover.
+                  e.target.value = "";
+                }}
               />
               <span className="wizard-dropzone-title">Arraste ficheiros para aqui</span>
               <span className="wizard-dropzone-sub">ou clique para escolher no computador</span>
             </div>
 
-            {files.length > 0 && (
-              <ul className="wizard-file-list">
-                {files.map((f) => (
-                  <li key={f.id}>
-                    {f.previewUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={f.previewUrl} alt="" />
-                    ) : (
-                      <span className="wizard-file-icon">DOC</span>
-                    )}
-                    <span className="wizard-file-name">{f.file.name}</span>
-                    <button type="button" onClick={() => removeFile(f.id)} aria-label={`Remover ${f.file.name}`}>
-                      ×
-                    </button>
-                  </li>
+            {fileErrors.length > 0 && (
+              <ul className="wizard-file-errors" role="alert">
+                {fileErrors.map((msg) => (
+                  <li key={msg} className="text-sm text-red-600 mt-2">{msg}</li>
                 ))}
               </ul>
+            )}
+
+            {files.length > 0 && (
+              <>
+                <ul className="wizard-file-list">
+                  {files.map((f) => (
+                    <li key={f.id}>
+                      {f.previewUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={f.previewUrl} alt="" />
+                      ) : (
+                        <span className="wizard-file-icon">DOC</span>
+                      )}
+                      <span className="wizard-file-name">{f.file.name} · {formatSize(f.file.size)}</span>
+                      <button type="button" onClick={() => removeFile(f.id)} aria-label={`Remover ${f.file.name}`}>
+                        ×
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-graphite-light text-[.78rem] mt-2">
+                  Total anexado: {formatSize(totalFileSize)} de {formatSize(MAX_TOTAL_SIZE_BYTES)}.
+                </p>
+              </>
             )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mt-9">
@@ -462,7 +597,7 @@ export function ViabilityWizard() {
               <div><dt>Prazo</dt><dd>{timelineOptions.find((t) => t.value === data.timeline)?.label || "—"}</dd></div>
               <div><dt>Orçamento</dt><dd>{budgetOptions.find((b) => b.value === data.budgetRange)?.label || "—"}</dd></div>
               <div><dt>Objetivos</dt><dd>{data.objectives.join(", ") || data.objectivesOther || "—"}</dd></div>
-              <div><dt>Documentos</dt><dd>{files.length > 0 ? `${files.length} ficheiro(s) anexado(s)` : "Nenhum anexado"}</dd></div>
+              <div><dt>Documentos</dt><dd>{files.length > 0 ? `${files.length} ficheiro(s) anexado(s) · ${formatSize(totalFileSize)}` : "Nenhum anexado"}</dd></div>
               <div><dt>Visita preferencial</dt><dd>{data.preferredDate || "A combinar"} {data.preferredPeriod ? `· ${periodOptions.find((p) => p.value === data.preferredPeriod)?.label}` : ""}</dd></div>
               <div><dt>Contacto</dt><dd>{data.firstname || "—"} · {data.phone || "—"} · {data.email || "—"}</dd></div>
             </dl>
