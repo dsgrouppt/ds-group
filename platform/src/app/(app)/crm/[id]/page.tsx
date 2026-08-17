@@ -20,6 +20,7 @@ import {
   QUALIFICATION_CATEGORY_LABEL,
 } from "@/lib/enums";
 import { QUALIFICATION_CRITERIA } from "@/lib/qualification";
+import { getDealTimeline, type TimelineEvent } from "@/lib/timeline";
 import { updateDeal, deleteDeal, advanceDealStage, submitQualification } from "../actions";
 
 export const dynamic = "force-dynamic";
@@ -37,6 +38,8 @@ export default async function DealDetailPage({ params }: { params: { id: string 
   ]);
 
   if (!deal) notFound();
+
+  const timeline = await getDealTimeline(deal.id, deal.clientId);
 
   return (
     <div>
@@ -168,6 +171,43 @@ export default async function DealDetailPage({ params }: { params: { id: string 
           </CardBody>
         </Card>
       </div>
+
+      <Card className="mt-6">
+        <CardHeader>
+          <h2 className="font-display text-[1.1rem]">Timeline ({timeline.length})</h2>
+        </CardHeader>
+        <CardBody className="p-0">
+          {timeline.length === 0 ? (
+            <EmptyState title="Sem eventos" description="Ainda não há atividade registada para este negócio." />
+          ) : (
+            <ul className="divide-y divide-mist-2">
+              {timeline.map((event: TimelineEvent) => (
+                <li key={event.id} className="px-6 py-3.5 flex items-start justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        tone={
+                          event.type === "WHATSAPP_IN" || event.type === "WHATSAPP_OUT"
+                            ? "success"
+                            : event.type === "DELETE"
+                              ? "danger"
+                              : "neutral"
+                        }
+                      >
+                        {event.type === "WHATSAPP_IN" || event.type === "WHATSAPP_OUT" ? "WhatsApp" : event.type === "TASK" ? "Tarefa" : "Atividade"}
+                      </Badge>
+                      <span className="text-sm font-medium">{event.label}</span>
+                    </div>
+                    {event.detail && <p className="text-sm text-graphite-light mt-1">{event.detail}</p>}
+                    {event.actor && <p className="text-xs text-graphite-light mt-1">Por: {event.actor}</p>}
+                  </div>
+                  <span className="text-xs text-graphite-light whitespace-nowrap">{event.createdAt.toLocaleString("pt-PT")}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardBody>
+      </Card>
 
       {canEdit && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
