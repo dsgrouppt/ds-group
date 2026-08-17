@@ -111,6 +111,7 @@ model Client {
   attachments     Attachment[]
   messages        ClientMessage[]
   waConversations WhatsAppConversation[]
+  emailThreads    EmailThread[]
 
   @@index([type])
   @@index([createdAt])
@@ -722,5 +723,47 @@ model WhatsAppMessage {
   createdAt      DateTime             @default(now())
 
   @@index([conversationId])
+  @@index([createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Associação de email ao cliente (Prioridade 6, ago/2026). Só o lado de
+// ENTRADA existe hoje (ver src/lib/email-inbound.ts) — receção via webhook
+// do Resend, associada a um Client pelo endereço do remetente. Ainda inerte
+// em produção: requer RESEND_INBOUND_WEBHOOK_SECRET + configuração de um
+// subdomínio de receção no painel Resend, nenhum dos quais existe ainda.
+// Mesmo desenho do WhatsAppConversation/WhatsAppMessage: uma "thread" por
+// participante, associação automática só quando o endereço já é conhecido
+// de um Client existente, nunca cria Client novo a partir de um email.
+model EmailThread {
+  id               String    @id @default(cuid())
+  client           Client?   @relation(fields: [clientId], references: [id])
+  clientId         String?
+  participantEmail String    @unique
+  lastMessageAt    DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  messages EmailMessage[]
+
+  @@index([clientId])
+}
+
+// direction: "INBOUND" | "OUTBOUND" (OUTBOUND ainda não é escrito por
+// nenhum código — ver comentário em src/lib/email-inbound.ts)
+model EmailMessage {
+  id            String      @id @default(cuid())
+  thread        EmailThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  threadId      String
+  direction     String
+  resendEmailId String?     @unique
+  subject       String?
+  bodyText      String?
+  bodyHtml      String?
+  fromAddress   String
+  toAddress     String
+  createdAt     DateTime    @default(now())
+
+  @@index([threadId])
   @@index([createdAt])
 }
