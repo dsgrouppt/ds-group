@@ -22,6 +22,18 @@ export default async function middleware(req: NextRequest) {
       return NextResponse.next();
     }
 
+        // /api/webhooks/* recebe chamadas publicas da Meta (Lead Ads e
+        // WhatsApp Business Cloud API) -- nunca tem cookie de sessao, nunca
+        // pode ter (a Meta nao faz login no DS OS). A autenticacao e feita
+        // dentro de cada rota por assinatura HMAC (X-Hub-Signature-256, ver
+        // src/app/api/webhooks/meta-leads/route.ts e .../whatsapp/route.ts),
+        // exatamente como /api/internal/* usa um Bearer token em vez do
+        // cookie do NextAuth. Sem este bypass, o GET de verificacao da Meta
+        // e todo POST de eventos caiam sempre em 307 -> /login.
+        if (pathname.startsWith("/api/webhooks/")) {
+                    return NextResponse.next();
+        }
+
   if (isPortalRoute && pathname === "/portal/login") {
         return NextResponse.next();
   }
