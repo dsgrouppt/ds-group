@@ -96,4 +96,4 @@ ENTRYPOINT ["/app/docker-entrypoint.sh"]
 # porque "db push" é idempotente (não altera nada se o schema já estiver
 # em sincronia). Alternativa mais formal: adotar "prisma migrate deploy"
 # com migrações versionadas quando a equipa crescer.
-CMD ["sh", "-c", "node node_modules/prisma/build/index.js db push --skip-generate && node server.js"]
+CMD ["sh", "-c", "node node_modules/prisma/build/index.js db push --skip-generate --accept-data-loss && node server.js"]
