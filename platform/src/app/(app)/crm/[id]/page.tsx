@@ -189,12 +189,20 @@ export default async function DealDetailPage({ params }: { params: { id: string 
                         tone={
                           event.type === "WHATSAPP_IN" || event.type === "WHATSAPP_OUT"
                             ? "success"
-                            : event.type === "DELETE"
-                              ? "danger"
-                              : "neutral"
+                            : event.type === "EMAIL_IN" || event.type === "EMAIL_OUT"
+                              ? "gold"
+                              : event.type === "DELETE"
+                                ? "danger"
+                                : "neutral"
                         }
                       >
-                        {event.type === "WHATSAPP_IN" || event.type === "WHATSAPP_OUT" ? "WhatsApp" : event.type === "TASK" ? "Tarefa" : "Atividade"}
+                        {event.type === "WHATSAPP_IN" || event.type === "WHATSAPP_OUT"
+                          ? "WhatsApp"
+                          : event.type === "EMAIL_IN" || event.type === "EMAIL_OUT"
+                            ? "Email"
+                            : event.type === "TASK"
+                              ? "Tarefa"
+                              : "Atividade"}
                       </Badge>
                       <span className="text-sm font-medium">{event.label}</span>
                     </div>
