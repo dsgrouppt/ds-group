@@ -61,6 +61,10 @@ model User {
   // ficheiro) — quem criou/editou cada obra ou testemunho publicável no site.
   websiteCaseStudiesCreated  WebsiteCaseStudy[]   @relation("WebsiteCaseStudyCreatedBy")
   websiteTestimonialsCreated WebsiteTestimonial[] @relation("WebsiteTestimonialCreatedBy")
+
+  // WhatsApp Business (ver secção WHATSAPP, fundo do ficheiro) — quem enviou
+  // cada mensagem OUTBOUND a partir do DS OS.
+  whatsappMessagesSent WhatsAppMessage[]
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -92,11 +96,12 @@ model Client {
   portalActive      Boolean   @default(false)
   lastLoginAt       DateTime?
 
-  deals       Deal[]
-  projects    Project[]
-  tags        TagOnClient[]
-  attachments Attachment[]
-  messages    ClientMessage[]
+  deals           Deal[]
+  projects        Project[]
+  tags            TagOnClient[]
+  attachments     Attachment[]
+  messages        ClientMessage[]
+  waConversations WhatsAppConversation[]
 
   @@index([type])
   @@index([createdAt])
@@ -172,6 +177,23 @@ model Deal {
   metaFbp         String?
   metaFbc         String?
 
+  // ── Meta Lead Ads (formularios nativos, "Instant Forms") — adicionado
+  // ago/2026. Preenchidos apenas quando o negocio chega via
+  // /api/webhooks/meta-leads -- nulos para todas as outras origens.
+  // metaLeadgenId e a chave de deduplicacao: a Meta garante reentrega do
+  // webhook "pelo menos uma vez", nunca exactamente uma vez -- a
+  // constraint @unique impede criar dois negocios para o mesmo lead
+  // nativo caso o mesmo evento chegue duas vezes.
+  metaLeadgenId    String? @unique
+  metaCampaignId   String?
+  metaCampaignName String?
+  metaAdsetId      String?
+  metaAdsetName    String?
+  metaAdId         String?
+  metaAdName       String?
+  metaFormId       String?
+  metaFormName     String?
+
   // ── Processo comercial operacional (doc 05) — adicionado Fase 1, ago/2026 ──
   // firstContactedAt: quando a "Primeiro Contacto" (ver Task) foi de facto
   // concluída — mede o SLA real de resposta (doc 05 §2), distinto de
@@ -184,9 +206,10 @@ model Deal {
   qualificationScore    Int?
   qualificationCategory String?
 
-  project Project?
-  tags    TagOnDeal[]
-  tasks   Task[]
+  project         Project?
+  tags            TagOnDeal[]
+  tasks           Task[]
+  waConversations WhatsAppConversation[]
 
   @@index([clientId])
   @@index([ownerId])
@@ -643,4 +666,52 @@ model WebsiteTestimonial {
   updatedAt   DateTime @updatedAt
 
   @@index([authorized])
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// WHATSAPP (WhatsApp Business Cloud API) — adicionado ago/2026
+// ─────────────────────────────────────────────────────────────────────────
+
+// Uma conversa por numero de telefone -- a Meta trata cada contacto do
+// WhatsApp Business como uma thread continua, nao por mensagem individual.
+// Ligada a Client/Deal quando o numero e reconhecido (ver
+// /api/webhooks/whatsapp); fica sem ligacao (clientId/dealId nulos) se a
+// mensagem chegar de um numero que ainda nao existe como Client -- deve
+// aparecer numa lista de conversas por associar, para associacao manual.
+model WhatsAppConversation {
+  id            String    @id @default(cuid())
+  client        Client?   @relation(fields: [clientId], references: [id])
+  clientId      String?
+  deal          Deal?     @relation(fields: [dealId], references: [id])
+  dealId        String?
+  phoneNumber   String    @unique // E.164, ex.: "+351912345678"
+  waContactName String?
+  lastMessageAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  messages WhatsAppMessage[]
+
+  @@index([clientId])
+  @@index([dealId])
+}
+
+// direction: "INBOUND" | "OUTBOUND"
+// status (so relevante para OUTBOUND, atualizado pelo webhook de
+// "statuses" da Meta): "ENVIADA" | "ENTREGUE" | "LIDA" | "FALHOU"
+model WhatsAppMessage {
+  id             String               @id @default(cuid())
+  conversation   WhatsAppConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  conversationId String
+  direction      String
+  waMessageId    String?              @unique
+  body           String?
+  templateName   String?
+  status         String               @default("RECEBIDA")
+  sentBy         User?                @relation(fields: [sentById], references: [id])
+  sentById       String?
+  createdAt      DateTime             @default(now())
+
+  @@index([conversationId])
+  @@index([createdAt])
 }
