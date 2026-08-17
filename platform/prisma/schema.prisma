@@ -96,6 +96,15 @@ model Client {
   portalActive      Boolean   @default(false)
   lastLoginAt       DateTime?
 
+  // ── Sincronização HubSpot (Prioridade 5, ago/2026) ──────────────────
+  // DS OS é a fonte operacional principal — este cliente nunca é criado
+  // a partir do HubSpot, só empurrado para lá (upsert por email, nunca
+  // duplica contactos). hubspotContactId nulo = ainda não sincronizado
+  // (ou sync desativado por falta de HUBSPOT_ACCESS_TOKEN). Ver
+  // src/lib/hubspot.ts e src/app/api/internal/hubspot-sync/route.ts.
+  hubspotContactId String?   @unique
+  hubspotSyncedAt  DateTime?
+
   deals           Deal[]
   projects        Project[]
   tags            TagOnClient[]
