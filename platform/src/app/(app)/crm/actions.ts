@@ -296,7 +296,7 @@ export async function advanceDealStage(dealId: string, formData: FormData) {
       eventName: "NegocioGanho",
       actionSource: "system_generated",
       userData: {
-        email: outcome.clientEmail,
+        email: outcome.clientEmail ?? undefined,
         phone: outcome.clientPhone ?? undefined,
         fbp: outcome.metaFbp ?? undefined,
         fbc: outcome.metaFbc ?? undefined,
