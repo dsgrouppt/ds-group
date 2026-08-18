@@ -221,6 +221,12 @@ model Deal {
   tasks           Task[]
   waConversations WhatsAppConversation[]
 
+  // DS Sales Assistant (Etapa 1, ago/2026 — desenho v2 aprovado 18.08):
+  // relações virtuais (Prisma) — NÃO alteram a tabela Deal na base de
+  // dados; as FKs vivem em AssistantSession.dealId e CalendarEvent.dealId.
+  assistantSession AssistantSession?
+  events           CalendarEvent[]
+
   @@index([clientId])
   @@index([ownerId])
   @@index([stage])
@@ -365,7 +371,17 @@ model CalendarEvent {
   notes     String?
   createdAt DateTime  @default(now())
 
+  // Ligação opcional ao negócio (DS Sales Assistant, Etapa 1 — desenho v2
+  // §5, aprovado 18.08.2026): fecha a lacuna "visita técnica de um lead não
+  // fica ligada ao Deal". Nullable deliberadamente — todos os eventos
+  // existentes ficam a NULL, sem migração de dados nem impacto nas páginas
+  // atuais da Agenda. Usada pela ferramenta `propor_visita` do assistente
+  // (Etapa 2) e disponível para a equipa ligar visitas manualmente.
+  deal   Deal?   @relation(fields: [dealId], references: [id])
+  dealId String?
+
   @@index([projectId])
+  @@index([dealId])
   @@index([startAt])
 }
 
@@ -766,4 +782,52 @@ model EmailMessage {
 
   @@index([threadId])
   @@index([createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// DS SALES ASSISTANT (Etapa 1, ago/2026 — desenho técnico v2 aprovado pelo
+// fundador em 18.08.2026, ver Project doc
+// claude/ds-sales-assistant-desenho-tecnico-v2.md §2)
+// ─────────────────────────────────────────────────────────────────────────
+
+// Sessão do assistente comercial automático — UMA por negócio (Deal),
+// deliberadamente independente do canal: o mesmo lead pode começar por
+// email (fallback) e continuar por WhatsApp (principal) sem perder estado.
+// O histórico das mensagens em si NUNCA vive aqui — continua nos modelos
+// existentes (WhatsAppMessage / EmailMessage), que a Timeline já mostra.
+// Esta tabela guarda apenas o estado da máquina + as respostas recolhidas.
+//
+// channel: "WHATSAPP" | "EMAIL"
+// state:   "AGUARDA_CONTACTO" | "CONTACTADO" | "QUALIFICACAO" | "FOTOS" |
+//          "CLASSIFICADO" | "AGENDAMENTO" | "VISITA_PROPOSTA" |
+//          "CONCLUIDO" | "ESCALADO" | "SEM_RESPOSTA" | "OPT_OUT"
+// (String em vez de enum nativo — mesma decisão deliberada do topo deste
+// ficheiro: valores validados em src/lib/enums.ts, mudá-los é código de
+// aplicação, não migração de schema.)
+//
+// humanTakeover: uma vez true, o assistente cala-se nesta conversa para
+// sempre — só um humano pode decidir o contrário. Marcado automaticamente
+// à primeira mensagem manual da equipa (desenho v2 §4, gatilho 11).
+// nudgeCount: máx. 3 lembretes por lead (regra de segurança dura).
+// dataJson: respostas recolhidas na conversa (5 critérios de qualificação,
+// disponibilidades para visita, flags) — JSON serializado; a fonte de
+// verdade do score continua a ser Deal.qualificationScore/Category,
+// escrito via src/lib/qualification.ts (nunca um scoring paralelo).
+model AssistantSession {
+  id             String    @id @default(cuid())
+  deal           Deal      @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  dealId         String    @unique
+  channel        String    @default("EMAIL")
+  state          String    @default("AGUARDA_CONTACTO")
+  dataJson       String    @default("{}")
+  humanTakeover  Boolean   @default(false)
+  takeoverReason String?
+  nudgeCount     Int       @default(0)
+  lastInboundAt  DateTime?
+  lastOutboundAt DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([state])
+  @@index([humanTakeover])
 }
