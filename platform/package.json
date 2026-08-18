@@ -13,7 +13,8 @@
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
     "postinstall": "prisma generate",
-    "db:local": "node scripts/pg-dev.mjs start"
+    "db:local": "node scripts/pg-dev.mjs start",
+    "test:assistant": "node --import tsx --test tests/assistant/*.test.ts"
   },
   "dependencies": {
     "@prisma/client": "5.20.0",
