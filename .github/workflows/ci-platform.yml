@@ -67,3 +67,9 @@ jobs:
 
       - name: Build (confirma que compila sem erros)
         run: npm run build
+
+      - name: Testes do DS Sales Assistant (Etapa 2 — motor em shadow, sem envios)
+        run: npm run test:assistant
+        env:
+          ASSISTANT_ENABLED: "true"
+          STORAGE_DIR: /tmp/ci-storage
