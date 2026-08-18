@@ -1,0 +1,126 @@
+/**
+ * DS Sales Assistant — interpretação determinística das respostas do lead
+ * (Etapa 2). Sem IA: heurísticas de texto em PT, deliberadamente
+ * CONSERVADORAS — na dúvida devolvem `undefined` (o motor volta a
+ * perguntar ou escala), nunca inventam uma classificação. Na Etapa 3 o
+ * LLM substitui esta camada como *proposta*, mas a régua (0/1/2 por
+ * critério) e a validação continuam a ser as de src/lib/qualification.ts.
+ *
+ * Reutiliza as regras de negócio existentes (business-rules.ts) — nunca
+ * valores próprios.
+ */
+
+import { SERVICE_AREA_CITIES, MIN_VIABLE_BUDGET_EUR, TARGET_BUDGET_RANGE_EUR } from "@/lib/business-rules";
+import type { QualificationCriterionKey, QualificationCriterionScore } from "@/lib/qualification";
+
+function normalize(text: string): string {
+  return (text || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "");
+}
+
+/** Localização: 2 = cidade da área de atuação; 1 = distrito/limítrofe plausível; undefined = não percebido. */
+export function scoreLocalizacao(text: string): QualificationCriterionScore | undefined {
+  const t = normalize(text);
+  if (!t.trim()) return undefined;
+  for (const city of SERVICE_AREA_CITIES) {
+    if (t.includes(normalize(city))) return 2;
+  }
+  // Zonas limítrofes comuns da área de atuação — 1 ponto (a confirmar por humano).
+  const adjacent = ["amadora", "odivelas", "loures", "seixal", "barreiro", "montijo", "mafra", "torres vedras", "setubal", "gondomar", "maia", "valongo", "braga", "queluz", "sacavem", "alcochete"];
+  if (adjacent.some((z) => t.includes(z))) return 1;
+  return undefined;
+}
+
+/** Tipo de obra: 2 = remodelação completa/gestão integral; 1 = parcial (1–2 divisões); 0 = trabalho avulso. */
+export function scoreTipoObra(text: string): QualificationCriterionScore | undefined {
+  const t = normalize(text);
+  if (!t.trim()) return undefined;
+  // Avulso primeiro (mais específico): "só pintura de uma sala" é avulso,
+  // mesmo mencionando uma divisão — a ordem dos testes é deliberada.
+  if (/(so pintura|apenas pintura|so pintar|pintar (uma|a) parede|trocar (uma|a) torneira|pequeno arranjo|arranjo pontual|reparacao pontual|so o chao|apenas o chao|trocar o chao de uma)/.test(t)) return 0;
+  if (/(remodelacao (total|completa|integral)|casa (toda|inteira)|apartamento (todo|inteiro)|obra completa|gestao (integral|completa|do projeto)|remodelar tudo|t[0-9]\s?(completo|todo|inteiro))/.test(t)) return 2;
+  if (/(cozinha|casa de banho|casas de banho|wc|quarto|sala|sotao|garagem|varanda|marquise|uma divisao|duas divisoes)/.test(t)) return 1;
+  return undefined;
+}
+
+/** Extrai um valor em euros do texto ("30 mil", "45.000€", "entre 30 e 50 mil"). Devolve o MAIOR valor referido. */
+export function extractBudgetEur(text: string): number | undefined {
+  const t = normalize(text).replace(/ /g, " ");
+  let max: number | undefined;
+  const consider = (n: number) => {
+    if (Number.isFinite(n) && n > 0) max = max === undefined ? n : Math.max(max, n);
+  };
+  // "30 mil", "30m€" — milhares por extenso.
+  for (const m of t.matchAll(/(\d+(?:[.,]\d+)?)\s*mil/g)) {
+    consider(parseFloat(m[1].replace(",", ".")) * 1000);
+  }
+  // "45.000", "45000", "45 000" (com ou sem €/euros por perto).
+  for (const m of t.matchAll(/(\d{1,3}(?:[\s.]\d{3})+|\d{4,})(?!\s*mil)/g)) {
+    consider(parseInt(m[1].replace(/[\s.]/g, ""), 10));
+  }
+  // "45k"
+  for (const m of t.matchAll(/(\d+(?:[.,]\d+)?)\s*k\b/g)) {
+    consider(parseFloat(m[1].replace(",", ".")) * 1000);
+  }
+  return max;
+}
+
+/** Orçamento: régua de business-rules — 0 abaixo do mínimo viável; 1 dentro mas incerto; 2 na faixa alvo. */
+export function scoreOrcamento(text: string): QualificationCriterionScore | undefined {
+  const t = normalize(text);
+  if (!t.trim()) return undefined;
+  if (/(nao sei|nao faco ideia|sem orcamento|logo se ve|depende|nao pensei nisso)/.test(t)) return undefined;
+  const value = extractBudgetEur(t);
+  if (value === undefined) return undefined;
+  if (value < MIN_VIABLE_BUDGET_EUR) return 0;
+  if (value >= TARGET_BUDGET_RANGE_EUR.min) return 2;
+  return 1; // >= mínimo viável mas abaixo da faixa alvo
+}
+
+/** Prazo/urgência: 2 = 1–3 meses; 1 = prazo definido mas longo; 0 = só a pesquisar. */
+export function scorePrazo(text: string): QualificationCriterionScore | undefined {
+  const t = normalize(text);
+  if (!t.trim()) return undefined;
+  if (/(o quanto antes|ja|urgente|este mes|proximo mes|proximas semanas|imediato|assim que possivel|quanto antes|1 a 3 meses|dois meses|tres meses|um mes)/.test(t)) return 2;
+  if (/(este ano|para o ano|daqui a (uns|alguns) meses|segundo semestre|primeiro semestre|seis meses|6 meses|no verao|no inverno|na primavera|no outono)/.test(t)) return 1;
+  if (/(so a pesquisar|apenas a ver|sem pressa|ainda nao sei quando|um dia|sem data|so curiosidade|a sondar)/.test(t)) return 0;
+  return undefined;
+}
+
+/** Decisor: 2 = decide (só ou com decisores presentes); 1 = decide em conjunto com ausente; 0 = não decide. */
+export function scoreDecisor(text: string): QualificationCriterionScore | undefined {
+  const t = normalize(text);
+  if (!t.trim()) return undefined;
+  if (/(sou eu que decido|decido eu|a decisao e minha|eu e o meu marido|eu e a minha mulher|eu e o meu companheiro|eu e a minha companheira|decidimos os dois|somos nos)/.test(t)) return 2;
+  if (/(tenho de falar com|depende do meu|depende da minha|em conjunto com|a minha esposa decide comigo|o meu marido decide comigo|falar primeiro com)/.test(t)) return 1;
+  if (/(nao sou eu que decido|e para (um|uma) (amigo|amiga|familiar|cliente)|estou so a ajudar|quem decide e)/.test(t)) return 0;
+  return undefined;
+}
+
+export const CRITERION_SCORERS: Record<QualificationCriterionKey, (text: string) => QualificationCriterionScore | undefined> = {
+  localizacao: scoreLocalizacao,
+  tipoObra: scoreTipoObra,
+  orcamento: scoreOrcamento,
+  prazoUrgencia: scorePrazo,
+  decisor: scoreDecisor,
+};
+
+/** Ordem de recolha na conversa (a mais natural comercialmente). */
+export const CRITERIA_ORDER: readonly QualificationCriterionKey[] = ["tipoObra", "localizacao", "prazoUrgencia", "orcamento", "decisor"];
+
+/** Pergunta determinística seguinte para um critério (texto validado pelos guardrails nos testes). */
+export const CRITERIA_QUESTIONS: Record<QualificationCriterionKey, string> = {
+  tipoObra: "Para percebermos como ajudar: que tipo de projeto tem em mente? (ex.: remodelação completa da casa, cozinha, casa de banho)",
+  localizacao: "Em que cidade ou zona fica o imóvel?",
+  prazoUrgencia: "Quando gostaria de avançar com o projeto?",
+  orcamento: "Para enquadrarmos a proposta: tem um orçamento aproximado em mente para o investimento?",
+  decisor: "A decisão sobre o projeto é sua, ou vai ser tomada em conjunto com mais alguém?",
+};
+
+/** Deteção simples de disponibilidade para visita (dias/horas no texto). */
+export function looksLikeAvailability(text: string): boolean {
+  const t = normalize(text);
+  return /(segunda|terca|quarta|quinta|sexta|sabado|domingo|amanha|depois de amanha|de manha|a tarde|ao fim do dia|\b\d{1,2}h(\d{2})?\b|\b\d{1,2}:\d{2}\b|proxima semana|este fim de semana|dia \d{1,2})/.test(t);
+}
