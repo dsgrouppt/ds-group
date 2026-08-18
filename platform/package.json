@@ -14,7 +14,7 @@
     "db:seed": "tsx prisma/seed.ts",
     "postinstall": "prisma generate",
     "db:local": "node scripts/pg-dev.mjs start",
-    "test:assistant": "node --import tsx --test tests/assistant/*.test.ts"
+    "test:assistant": "node --import tsx --test --test-concurrency=1 tests/assistant/*.test.ts"
   },
   "dependencies": {
     "@prisma/client": "5.20.0",
