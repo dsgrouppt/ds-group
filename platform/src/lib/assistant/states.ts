@@ -30,7 +30,15 @@ export type AssistantStateValue = (typeof ASSISTANT_STATE)[keyof typeof ASSISTAN
 
 export const ASSISTANT_STATES: readonly AssistantStateValue[] = Object.values(ASSISTANT_STATE);
 
-/** Estados terminais: o motor nunca processa nem age numa sessão nestes estados. */
+/**
+ * Estados terminais: o fluxo NORMAL do motor nunca corre nestes estados.
+ * Uma mensagem recebida num terminal segue o tratamento de REATIVAÇÃO
+ * (validação final da Etapa 2, P1, aprovada 19.08.2026):
+ *  - SEM_RESPOSTA → escalar_humano (única saída legal, ver mapa abaixo)
+ *  - CONCLUIDO   → tarefa NORMAL deduplicada (24h)
+ *  - OPT_OUT     → tarefa ALTA (RGPD), SEM resposta automática
+ *  - ESCALADO    → silêncio (responsabilidade humana)
+ */
 export const TERMINAL_STATES: ReadonlySet<AssistantStateValue> = new Set([
   ASSISTANT_STATE.CONCLUIDO,
   ASSISTANT_STATE.ESCALADO,
@@ -53,7 +61,10 @@ const TRANSITIONS: Readonly<Record<AssistantStateValue, readonly AssistantStateV
   VISITA_PROPOSTA: [ASSISTANT_STATE.CONCLUIDO, ASSISTANT_STATE.ESCALADO, ASSISTANT_STATE.OPT_OUT],
   CONCLUIDO: [],
   ESCALADO: [],
-  SEM_RESPOSTA: [],
+  // Única saída de um terminal: lead que volta a responder depois dos
+  // nudges esgotados é reativação quente → escalonamento humano imediato
+  // (P1 da validação final, aprovada 19.08.2026).
+  SEM_RESPOSTA: [ASSISTANT_STATE.ESCALADO],
   OPT_OUT: [],
 };
 
@@ -78,6 +89,16 @@ export type AssistantChannel = (typeof ASSISTANT_CHANNELS)[number];
 export interface AssistantSessionData {
   /** Respostas 0/1/2 já apuradas para os 5 critérios (parciais durante a conversa). */
   criterios?: Partial<Record<"localizacao" | "tipoObra" | "orcamento" | "prazoUrgencia" | "decisor", 0 | 1 | 2>>;
+  /**
+   * Critérios que o lead recusou responder ou que o motor não pôde apurar
+   * com segurança (P5 + decisão 6.1, aprovadas 19.08.2026) — ex.:
+   * "orcamento" recusado, "localizacao" não reconhecida. O guião salta-os
+   * e o fecho vai a triagem humana com motivo específico (a régua exige
+   * os 5; a pontuação em falta é preenchida por um humano).
+   */
+  criteriosSemResposta?: string[];
+  /** Contador de voltas sem progresso na pergunta atual (repergunta 1×, depois escala). */
+  semProgresso?: number;
   /** Texto livre relevante registado por critério (auditoria/contexto). */
   respostasTexto?: Partial<Record<string, string>>;
   /** Disponibilidades para visita indicadas pelo lead (texto livre, máx. 3). */

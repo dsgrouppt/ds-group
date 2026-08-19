@@ -83,6 +83,11 @@ const ToolSchemas = {
     dealId: dealIdSchema,
     disponibilidades: z.array(z.string().max(200)).max(3),
     startAt: z.coerce.date().optional(),
+    // P4 (validação final, 19.08.2026): leads POTENCIAL geram tarefa ALTA
+    // com nota de validação humana prévia; QUALIFICADO/PRIORITÁRIO mantêm
+    // URGENTE (default inalterado).
+    prioridade: z.enum(["ALTA", "URGENTE"]).default("URGENTE"),
+    nota: z.string().max(300).optional(),
   }),
   criar_tarefa: z.object({
     dealId: dealIdSchema,
@@ -298,8 +303,8 @@ async function proporVisita(args: z.infer<(typeof ToolSchemas)["propor_visita"]>
     await tx.task.create({
       data: {
         title: "Confirmar visita técnica (proposta pelo assistente)",
-        description: `${dispon}\nConfirmar com o cliente, criar/ajustar o evento na Agenda e mover o negócio para Visita Agendada (ação humana). ${eventoInfo}`,
-        priority: "URGENTE",
+        description: `${args.nota ? `${args.nota}\n` : ""}${dispon}\nConfirmar com o cliente, criar/ajustar o evento na Agenda e mover o negócio para Visita Agendada (ação humana). ${eventoInfo}`,
+        priority: args.prioridade,
         dueAt: new Date(Date.now() + 4 * 60 * 60 * 1000),
         assigneeId: deal.ownerId ?? undefined,
         dealId: deal.id,

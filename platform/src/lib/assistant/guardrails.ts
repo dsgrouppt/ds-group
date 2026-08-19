@@ -52,6 +52,11 @@ const ASKS_DATES_RE = /\b(quando (podem|conseguem) (começar|comecar)|para quand
 const WANTS_HUMAN_RE = /\b(falar com (uma pessoa|alguém|alguem|um humano|o responsável|o responsavel|o dono|um comercial)|não quero falar com (um |uma )?(robô|robo|bot|máquina|maquina)|nao quero falar com (um |uma )?(robô|robo|bot|máquina|maquina)|chamada|liguem-me|ligar-me|telefonem)\b/i;
 const COMPLAINT_RE = /\b(reclamação|reclamacao|péssimo|pessimo|horrível|horrivel|vergonha|enganad[oa]|burla|processar|advogado|livro de reclamações|livro de reclamacoes)\b/i;
 const OPT_OUT_RE = /\b(stop|remover|não me contactem|nao me contactem|parem de (me )?enviar|apagar os meus dados|cancelar subscrição|cancelar subscricao|deixem-me em paz)\b/i;
+// Urgência EXTREMA (P3 da validação final, aprovada 19.08.2026): situações
+// em que o lead precisa de voz humana em minutos, não de um questionário.
+// Distinto de urgência comercial normal ("quero avançar o quanto antes"),
+// que apenas pontua prazoUrgencia=2 e NÃO dispara este gatilho.
+const EXTREME_URGENCY_RE = /\b(infiltraç|infiltrac|inundaç|inundac|alagad|a alagar|cano rebentado|cano roto|rebentou (um |o )?cano|teto (a cair|caiu)|tecto (a cair|caiu)|casa inabitável|casa inabitavel|sem condições para (viver|morar)|sem condicoes para (viver|morar)|emergência|emergencia|urgente mesmo|muito urgente|urgentíssimo|urgentissimo|prazo de escritura|entrega de chaves)\b/i;
 
 export type EscalationTrigger =
   | "pergunta_preco"
@@ -59,7 +64,8 @@ export type EscalationTrigger =
   | "pergunta_datas_execucao"
   | "pede_humano"
   | "reclamacao"
-  | "fora_de_catalogo";
+  | "fora_de_catalogo"
+  | "urgencia_extrema";
 
 export interface InboundAnalysis {
   optOut: boolean;
@@ -75,6 +81,7 @@ export function detectEscalationTriggers(text: string): InboundAnalysis {
   if (WANTS_HUMAN_RE.test(t)) triggers.push("pede_humano");
   if (COMPLAINT_RE.test(t)) triggers.push("reclamacao");
   if (OUT_OF_CATALOG_RE.test(t)) triggers.push("fora_de_catalogo");
+  if (EXTREME_URGENCY_RE.test(t)) triggers.push("urgencia_extrema");
   return { optOut: OPT_OUT_RE.test(t), triggers };
 }
 

@@ -20,16 +20,29 @@ function normalize(text: string): string {
     .replace(/[̀-ͯ]/g, "");
 }
 
-/** Localização: 2 = cidade da área de atuação; 1 = distrito/limítrofe plausível; undefined = não percebido. */
+/**
+ * Localização (P2 + decisão 6.1 da validação final, aprovadas 19.08.2026):
+ *  - 2 = cidade da área de atuação aprovada (business-rules.ts);
+ *  - 0 = claramente fora da área (cidades portuguesas distantes ou
+ *        estrangeiro) — o guião CONTINUA e o lead chega à triagem humana
+ *        com o dossier completo; o assistente nunca rejeita por zona;
+ *  - undefined = zona não reconhecida — o assistente NÃO decide
+ *        automaticamente se é "limítrofe": não existe lista aprovada de
+ *        zonas limítrofes, portanto a pontuação 1 é EXCLUSIVA de humanos.
+ *        O motor repergunta uma vez e, se continuar por reconhecer,
+ *        marca o critério como "por avaliar" e entrega à triagem humana
+ *        no fecho (ver engine.ts).
+ */
+const OUT_OF_AREA_PT = ["faro", "portimao", "albufeira", "lagos", "tavira", "olhao", "evora", "beja", "coimbra", "leiria", "aveiro", "viseu", "guarda", "castelo branco", "portalegre", "santarem", "braganca", "vila real", "viana do castelo", "covilha", "funchal", "madeira", "ponta delgada", "acores", "algarve", "alentejo"];
+const FOREIGN_HINTS = ["paris", "londres", "london", "madrid", "genebra", "zurique", "luxemburgo", "bruxelas", "franca", "inglaterra", "suica", "alemanha", "estrangeiro", "fora de portugal", "luanda", "maputo", "brasil", "sao paulo"];
+
 export function scoreLocalizacao(text: string): QualificationCriterionScore | undefined {
   const t = normalize(text);
   if (!t.trim()) return undefined;
   for (const city of SERVICE_AREA_CITIES) {
     if (t.includes(normalize(city))) return 2;
   }
-  // Zonas limítrofes comuns da área de atuação — 1 ponto (a confirmar por humano).
-  const adjacent = ["amadora", "odivelas", "loures", "seixal", "barreiro", "montijo", "mafra", "torres vedras", "setubal", "gondomar", "maia", "valongo", "braga", "queluz", "sacavem", "alcochete"];
-  if (adjacent.some((z) => t.includes(z))) return 1;
+  if (OUT_OF_AREA_PT.some((z) => t.includes(z)) || FOREIGN_HINTS.some((z) => t.includes(z))) return 0;
   return undefined;
 }
 
@@ -65,6 +78,17 @@ export function extractBudgetEur(text: string): number | undefined {
     consider(parseFloat(m[1].replace(",", ".")) * 1000);
   }
   return max;
+}
+
+/**
+ * Recusa explícita de indicar orçamento (P5 da validação final, aprovada
+ * 19.08.2026) — DISTINTA de incompreensão: o lead percebeu a pergunta e
+ * não quer/não sabe responder. O motor aceita, segue o guião sem pontuar,
+ * e o fecho vai a triagem humana (a régua exige os 5 critérios).
+ */
+export function recusaOrcamento(text: string): boolean {
+  const t = normalize(text);
+  return /(nao digo|prefiro nao (dizer|responder|partilhar)|nao (te|lhe|vos) digo|nao tenho (um )?(valor|orcamento) (definido|em mente|pensado)|nao sei mesmo|nao faco ideia|sem orcamento definido|logo se ve|nao quero (dizer|responder|partilhar)|isso e (privado|comigo)|depende do que for preciso)/.test(t);
 }
 
 /** Orçamento: régua de business-rules — 0 abaixo do mínimo viável; 1 dentro mas incerto; 2 na faixa alvo. */

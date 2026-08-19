@@ -13,9 +13,10 @@
  */
 
 import { prisma } from "@/lib/prisma";
+import { isWithinBusinessHours } from "@/lib/sla";
 import { assistantEnabled, assistantShadowMode } from "./flags";
 import { detectEscalationTriggers, HARD_LIMITS } from "./guardrails";
-import { CRITERIA_ORDER, CRITERIA_QUESTIONS, CRITERION_SCORERS, looksLikeAvailability } from "./intents";
+import { CRITERIA_ORDER, CRITERIA_QUESTIONS, CRITERION_SCORERS, looksLikeAvailability, recusaOrcamento } from "./intents";
 import { executeAssistantTool, type ToolResult } from "./tools";
 import {
   ASSISTANT_STATE,
@@ -107,8 +108,11 @@ async function humanInterventionDetected(dealId: string, sessionCreatedAt: Date)
   return human !== null;
 }
 
-function nextPendingCriterion(criterios: Partial<Record<QualificationCriterionKey, 0 | 1 | 2>>): QualificationCriterionKey | undefined {
-  return CRITERIA_ORDER.find((k) => criterios[k] === undefined);
+function nextPendingCriterion(
+  criterios: Partial<Record<QualificationCriterionKey, 0 | 1 | 2>>,
+  semResposta: string[] = []
+): QualificationCriterionKey | undefined {
+  return CRITERIA_ORDER.find((k) => criterios[k] === undefined && !semResposta.includes(k));
 }
 
 /** Mensagens determinísticas do motor (todas validadas pelos guardrails na suite de testes). */
@@ -123,6 +127,14 @@ export const ENGINE_MESSAGES = {
     "Obrigado pelas informações. A nossa equipa vai analisar o seu pedido e entrará em contacto consigo. Obrigado por contactar a DS Projects.",
   reformularPedido:
     "Peço desculpa, não consegui perceber bem a sua resposta.",
+  transicaoHumano:
+    "Vou passar o seu pedido a um membro da nossa equipa, que vai entrar em contacto consigo brevemente. Obrigado!",
+  transicaoUrgente:
+    "Compreendo a urgência. Vou passar o seu pedido já à nossa equipa para falarem consigo o mais depressa possível.",
+  semProblemaOrcamento:
+    "Sem problema — podemos avançar sem esse valor.",
+  zonaRegistada:
+    "Obrigado, fica registado — a nossa equipa confirma a zona consigo.",
 } as const;
 
 async function planMessage(dealId: string, canal: AssistantChannel, corpo: string, calls: EngineReport["toolCalls"], planned: string[]): Promise<ToolResult> {
@@ -142,14 +154,44 @@ export async function processInbound(event: InboundEvent): Promise<EngineReport>
   const session = await prisma.assistantSession.findUnique({ where: { dealId: event.dealId } });
   if (!session) return report({ reason: "sem_sessao" });
   if (session.humanTakeover) return report({ reason: "takeover_humano", stateBefore: session.state, stateAfter: session.state });
-  if (isAssistantState(session.state) && TERMINAL_STATES.has(session.state)) {
-    return report({ reason: `estado_terminal=${session.state}`, stateBefore: session.state, stateAfter: session.state });
-  }
 
   const toolCalls: EngineReport["toolCalls"] = [];
   const plannedMessages: string[] = [];
   const push = (r: ToolResult) => toolCalls.push({ tool: r.tool, ok: r.ok, detail: r.detail ?? r.blockedByGuardrails?.join(",") });
   const stateBefore = session.state;
+
+  // ── Reativação em estado terminal (P1 da validação final, 19.08.2026) ──
+  // Um lead que escreve depois de a sessão ter terminado nunca fica em
+  // limbo: cada terminal tem tratamento próprio e chega sempre a um humano.
+  if (isAssistantState(session.state) && TERMINAL_STATES.has(session.state)) {
+    const dedupCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    if (session.state === ASSISTANT_STATE.SEM_RESPOSTA) {
+      // Reativação quente: única saída legal de um terminal (→ ESCALADO).
+      push(await executeAssistantTool("escalar_humano", { dealId: event.dealId, motivo: `Lead voltou a responder após nudges esgotados. Mensagem: "${event.texto.slice(0, 200)}"` }));
+      await prisma.assistantSession.update({ where: { dealId: event.dealId }, data: { lastInboundAt: new Date() } });
+      return report({ processed: true, stateBefore, stateAfter: ASSISTANT_STATE.ESCALADO, toolCalls, plannedMessages });
+    }
+    if (session.state === ASSISTANT_STATE.CONCLUIDO) {
+      const titulo = "Lead retomou contacto após fecho do assistente";
+      const existing = await prisma.task.findFirst({ where: { dealId: event.dealId, title: titulo, createdAt: { gt: dedupCutoff } } });
+      if (!existing) {
+        push(await executeAssistantTool("criar_tarefa", { dealId: event.dealId, titulo, descricao: `Mensagem do lead: "${event.texto.slice(0, 300)}". Seguimento humano.`, prioridade: "NORMAL" }));
+      }
+      return report({ processed: true, reason: existing ? "reativacao_deduplicada" : undefined, stateBefore, stateAfter: session.state, toolCalls, plannedMessages });
+    }
+    if (session.state === ASSISTANT_STATE.OPT_OUT) {
+      // Respeito integral pelo opt-out: ZERO resposta automática; a decisão
+      // de recontactar é humana (RGPD).
+      const titulo = "Lead em opt-out voltou a escrever — decisão humana sobre recontacto (RGPD)";
+      const existing = await prisma.task.findFirst({ where: { dealId: event.dealId, title: titulo, createdAt: { gt: dedupCutoff } } });
+      if (!existing) {
+        push(await executeAssistantTool("criar_tarefa", { dealId: event.dealId, titulo, descricao: `Mensagem do lead: "${event.texto.slice(0, 300)}". NÃO recontactar por canais automáticos sem decisão humana.`, prioridade: "ALTA" }));
+      }
+      return report({ processed: true, reason: existing ? "reativacao_deduplicada" : undefined, stateBefore, stateAfter: session.state, toolCalls, plannedMessages });
+    }
+    // ESCALADO sem humanTakeover (caso raro): silêncio — território humano.
+    return report({ reason: `estado_terminal=${session.state}`, stateBefore, stateAfter: session.state });
+  }
 
   // Gatilho 11 — intervenção manual da equipa → takeover imediato, sem processar.
   if (await humanInterventionDetected(event.dealId, session.createdAt)) {
@@ -166,9 +208,17 @@ export async function processInbound(event: InboundEvent): Promise<EngineReport>
     return report({ processed: true, stateBefore, stateAfter: ASSISTANT_STATE.OPT_OUT, toolCalls, plannedMessages });
   }
 
-  // Gatilhos de escalonamento obrigatório.
+  // Gatilhos de escalonamento obrigatório. Urgência extrema (P3, 19.08.2026)
+  // salta a qualificação: voz humana em minutos, não um questionário. A
+  // mensagem de transição é planeada ANTES do takeover (depois dele o
+  // enviar_mensagem fica bloqueado, por desenho).
   if (analysis.triggers.length > 0) {
-    push(await executeAssistantTool("escalar_humano", { dealId: event.dealId, motivo: `Gatilhos: ${analysis.triggers.join(", ")}. Mensagem do lead: "${event.texto.slice(0, 200)}"` }));
+    const urgente = analysis.triggers.includes("urgencia_extrema");
+    await planMessage(event.dealId, event.canal, urgente ? ENGINE_MESSAGES.transicaoUrgente : ENGINE_MESSAGES.transicaoHumano, toolCalls, plannedMessages);
+    push(await executeAssistantTool("escalar_humano", {
+      dealId: event.dealId,
+      motivo: `${urgente ? "URGENTE — contactar por telefone já. " : ""}Gatilhos: ${analysis.triggers.join(", ")}. Mensagem do lead: "${event.texto.slice(0, 200)}"`,
+    }));
     return report({ processed: true, stateBefore, stateAfter: ASSISTANT_STATE.ESCALADO, toolCalls, plannedMessages });
   }
 
@@ -196,21 +246,81 @@ export async function processInbound(event: InboundEvent): Promise<EngineReport>
   const data = parseSessionData(fresh.dataJson);
 
   if (state === ASSISTANT_STATE.QUALIFICACAO) {
-    const pending = nextPendingCriterion(data.criterios ?? {});
+    const semResposta = data.criteriosSemResposta ?? [];
+    const pending = nextPendingCriterion(data.criterios ?? {}, semResposta);
     if (pending) {
+      // P5 (19.08.2026): recusa explícita de orçamento — aceitar, marcar
+      // "sem resposta" e seguir o guião; o fecho vai a triagem humana.
+      if (pending === "orcamento" && recusaOrcamento(event.texto)) {
+        const novaLista = [...semResposta, "orcamento"];
+        await prisma.assistantSession.update({
+          where: { dealId: event.dealId },
+          data: {
+            dataJson: serializeSessionData({
+              ...data,
+              criteriosSemResposta: novaLista,
+              respostasTexto: { ...(data.respostasTexto ?? {}), orcamento: `recusado: "${event.texto.slice(0, 200)}"` },
+              semProgresso: 0,
+            }),
+          },
+        });
+        await prisma.activityLog.create({ data: { action: "ASSISTANT_ANSWER_RECORDED", entity: "Deal", entityId: event.dealId, meta: "criterio=orcamento;pontuacao=recusado" } });
+        const next = nextPendingCriterion(data.criterios ?? {}, novaLista);
+        await planMessage(event.dealId, event.canal, `${ENGINE_MESSAGES.semProblemaOrcamento}${next ? ` ${CRITERIA_QUESTIONS[next]}` : ""}`, toolCalls, plannedMessages);
+        if (!next) {
+          await setState(event.dealId, state, ASSISTANT_STATE.FOTOS);
+          await planMessage(event.dealId, event.canal, ENGINE_MESSAGES.pedirFotos, toolCalls, plannedMessages);
+          return report({ processed: true, stateBefore, stateAfter: ASSISTANT_STATE.FOTOS, toolCalls, plannedMessages });
+        }
+        return report({ processed: true, stateBefore, stateAfter: state, toolCalls, plannedMessages });
+      }
+
       const score = CRITERION_SCORERS[pending](event.texto);
       if (score !== undefined) {
         push(await executeAssistantTool("registar_resposta", { dealId: event.dealId, criterio: pending, pontuacao: score, texto: event.texto }));
+        if ((data.semProgresso ?? 0) > 0) {
+          const afterAnswer = parseSessionData((await prisma.assistantSession.findUniqueOrThrow({ where: { dealId: event.dealId } })).dataJson);
+          await prisma.assistantSession.update({
+            where: { dealId: event.dealId },
+            data: { dataJson: serializeSessionData({ ...afterAnswer, semProgresso: 0 }) },
+          });
+        }
       } else {
+        const stalls = (data.semProgresso ?? 0) + 1;
+        // P2 + 6.1 (19.08.2026): zona não reconhecida à repergunta NÃO é
+        // "sem progresso" — marca-se "por avaliar" (a pontuação de zona
+        // limítrofe é exclusiva de humanos) e o guião continua.
+        if (pending === "localizacao" && stalls >= HARD_LIMITS.MAX_TURNS_WITHOUT_PROGRESS) {
+          const novaLista = [...semResposta, "localizacao"];
+          await prisma.assistantSession.update({
+            where: { dealId: event.dealId },
+            data: {
+              dataJson: serializeSessionData({
+                ...data,
+                criteriosSemResposta: novaLista,
+                respostasTexto: { ...(data.respostasTexto ?? {}), localizacao: `nao reconhecida: "${event.texto.slice(0, 200)}"` },
+                semProgresso: 0,
+              }),
+            },
+          });
+          await prisma.activityLog.create({ data: { action: "ASSISTANT_ANSWER_RECORDED", entity: "Deal", entityId: event.dealId, meta: "criterio=localizacao;pontuacao=nao_reconhecida" } });
+          const next = nextPendingCriterion(data.criterios ?? {}, novaLista);
+          await planMessage(event.dealId, event.canal, `${ENGINE_MESSAGES.zonaRegistada}${next ? ` ${CRITERIA_QUESTIONS[next]}` : ""}`, toolCalls, plannedMessages);
+          if (!next) {
+            await setState(event.dealId, state, ASSISTANT_STATE.FOTOS);
+            await planMessage(event.dealId, event.canal, ENGINE_MESSAGES.pedirFotos, toolCalls, plannedMessages);
+            return report({ processed: true, stateBefore, stateAfter: ASSISTANT_STATE.FOTOS, toolCalls, plannedMessages });
+          }
+          return report({ processed: true, stateBefore, stateAfter: state, toolCalls, plannedMessages });
+        }
         // Sem progresso: contar voltas; ao limite, escalar (nunca insistir indefinidamente).
-        const stalls = ((data as { semProgresso?: number }).semProgresso ?? 0) + 1;
         if (stalls >= HARD_LIMITS.MAX_TURNS_WITHOUT_PROGRESS) {
           push(await executeAssistantTool("escalar_humano", { dealId: event.dealId, motivo: `Sem progresso após ${stalls} voltas no critério "${pending}".` }));
           return report({ processed: true, stateBefore, stateAfter: ASSISTANT_STATE.ESCALADO, toolCalls, plannedMessages });
         }
         await prisma.assistantSession.update({
           where: { dealId: event.dealId },
-          data: { dataJson: serializeSessionData({ ...data, semProgresso: stalls } as never) },
+          data: { dataJson: serializeSessionData({ ...data, semProgresso: stalls }) },
         });
         await planMessage(event.dealId, event.canal, `${ENGINE_MESSAGES.reformularPedido} ${CRITERIA_QUESTIONS[pending]}`, toolCalls, plannedMessages);
         return report({ processed: true, stateBefore, stateAfter: state, toolCalls, plannedMessages });
@@ -219,12 +329,12 @@ export async function processInbound(event: InboundEvent): Promise<EngineReport>
 
     // Reavaliar após possível registo.
     const updated = parseSessionData((await prisma.assistantSession.findUniqueOrThrow({ where: { dealId: event.dealId } })).dataJson);
-    const stillPending = nextPendingCriterion(updated.criterios ?? {});
+    const stillPending = nextPendingCriterion(updated.criterios ?? {}, updated.criteriosSemResposta ?? []);
     if (stillPending) {
       await planMessage(event.dealId, event.canal, CRITERIA_QUESTIONS[stillPending], toolCalls, plannedMessages);
       return report({ processed: true, stateBefore, stateAfter: state, toolCalls, plannedMessages });
     }
-    // 5/5 recolhidos → pedir fotos.
+    // Critérios esgotados (respondidos ou marcados "sem resposta") → fotos.
     await setState(event.dealId, state, ASSISTANT_STATE.FOTOS);
     await planMessage(event.dealId, event.canal, ENGINE_MESSAGES.pedirFotos, toolCalls, plannedMessages);
     return report({ processed: true, stateBefore, stateAfter: ASSISTANT_STATE.FOTOS, toolCalls, plannedMessages });
@@ -237,7 +347,14 @@ export async function processInbound(event: InboundEvent): Promise<EngineReport>
       const qual = await executeAssistantTool("registar_qualificacao", { dealId: event.dealId });
       push(qual);
       if (!qual.ok) {
-        push(await executeAssistantTool("escalar_humano", { dealId: event.dealId, motivo: `Qualificação incompleta ao fechar (${qual.detail}).` }));
+        // Motivo específico quando a incompletude vem de critérios que o
+        // lead recusou/não foi possível apurar (P5 + 6.1): triagem humana
+        // preenche a pontuação em falta — nunca o assistente.
+        const semResposta = (parseSessionData((await prisma.assistantSession.findUniqueOrThrow({ where: { dealId: event.dealId } })).dataJson).criteriosSemResposta ?? []);
+        const motivo = semResposta.length > 0
+          ? `Qualificação incompleta — critérios por avaliar humanamente: ${semResposta.join(", ")} (recusado/não reconhecido). Restante dossier completo na sessão.`
+          : `Qualificação incompleta ao fechar (${qual.detail}).`;
+        push(await executeAssistantTool("escalar_humano", { dealId: event.dealId, motivo }));
         return report({ processed: true, stateBefore, stateAfter: ASSISTANT_STATE.ESCALADO, toolCalls, plannedMessages });
       }
       await setState(event.dealId, state, ASSISTANT_STATE.CLASSIFICADO);
@@ -251,7 +368,12 @@ export async function processInbound(event: InboundEvent): Promise<EngineReport>
         return report({ processed: true, stateBefore, stateAfter: ASSISTANT_STATE.CONCLUIDO, toolCalls, plannedMessages });
       }
 
-      push(await executeAssistantTool("avancar_para_qualificado", { dealId: event.dealId }));
+      // P4 (19.08.2026): POTENCIAL (3–5) NÃO é promovido no pipeline — fica
+      // em NOVO_LEAD; recolhe disponibilidades e a proposta de visita sai
+      // com prioridade ALTA para validação humana prévia.
+      if (deal.qualificationCategory !== "POTENCIAL") {
+        push(await executeAssistantTool("avancar_para_qualificado", { dealId: event.dealId }));
+      }
       await setState(event.dealId, ASSISTANT_STATE.CLASSIFICADO, ASSISTANT_STATE.AGENDAMENTO);
       await planMessage(event.dealId, event.canal, ENGINE_MESSAGES.pedirDisponibilidade, toolCalls, plannedMessages);
       return report({ processed: true, stateBefore, stateAfter: ASSISTANT_STATE.AGENDAMENTO, toolCalls, plannedMessages });
@@ -262,7 +384,15 @@ export async function processInbound(event: InboundEvent): Promise<EngineReport>
     if (looksLikeAvailability(event.texto)) {
       push(await executeAssistantTool("registar_resposta", { dealId: event.dealId, criterio: "disponibilidade", texto: event.texto.slice(0, 200) }));
       const updated = parseSessionData((await prisma.assistantSession.findUniqueOrThrow({ where: { dealId: event.dealId } })).dataJson);
-      push(await executeAssistantTool("propor_visita", { dealId: event.dealId, disponibilidades: updated.disponibilidades ?? [] }));
+      // P4: POTENCIAL → tarefa ALTA com nota de validação humana prévia.
+      const dealNow = await prisma.deal.findUniqueOrThrow({ where: { id: event.dealId } });
+      const potencial = dealNow.qualificationCategory === "POTENCIAL";
+      push(await executeAssistantTool("propor_visita", {
+        dealId: event.dealId,
+        disponibilidades: updated.disponibilidades ?? [],
+        prioridade: potencial ? "ALTA" : "URGENTE",
+        nota: potencial ? `POTENCIAL (score ${dealNow.qualificationScore}/10) — validar por telefone antes de agendar.` : undefined,
+      }));
       await setState(event.dealId, state, ASSISTANT_STATE.VISITA_PROPOSTA);
       await planMessage(event.dealId, event.canal, ENGINE_MESSAGES.visitaProposta, toolCalls, plannedMessages);
       return report({ processed: true, stateBefore, stateAfter: ASSISTANT_STATE.VISITA_PROPOSTA, toolCalls, plannedMessages });
@@ -287,9 +417,23 @@ export async function processInbound(event: InboundEvent): Promise<EngineReport>
  * esgotados → SEM_RESPOSTA + tarefa humana. Nesta etapa só é invocada por
  * testes/endpoint interno; as "mensagens" são sempre planeadas (shadow).
  */
-export async function runNudgeSweep(now: Date = new Date()): Promise<{ nudged: string[]; exhausted: string[] }> {
+/**
+ * Cadência progressiva aprovada (decisão 6.2, 19.08.2026): 1.º nudge 24h
+ * após a última interação, 2.º nudge 72h depois do 1.º, 3.º nudge 7 dias
+ * depois do 2.º; esgotados (e passados mais 7 dias), SEM_RESPOSTA.
+ */
+const NUDGE_DELAYS_MS = [24 * 60 * 60 * 1000, 72 * 60 * 60 * 1000, 7 * 24 * 60 * 60 * 1000] as const;
+
+export async function runNudgeSweep(now: Date = new Date()): Promise<{ nudged: string[]; exhausted: string[]; skippedReason?: string }> {
   if (!assistantEnabled()) return { nudged: [], exhausted: [] };
-  const cutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  // Decisão 6.3 (19.08.2026): nenhum nudge automático fora do horário
+  // comercial (o 1.º contacto à entrada do lead continua 24/7 — isso é
+  // resposta ao anúncio, não follow-up).
+  if (!isWithinBusinessHours(now)) return { nudged: [], exhausted: [], skippedReason: "fora_de_horario_comercial" };
+
+  // Filtro grosso na BD (candidatos com ≥24h de silêncio); o prazo exato
+  // por nudgeCount é aplicado por sessão, abaixo.
+  const cutoff = new Date(now.getTime() - NUDGE_DELAYS_MS[0]);
   const stale = await prisma.assistantSession.findMany({
     where: {
       humanTakeover: false,
@@ -303,6 +447,11 @@ export async function runNudgeSweep(now: Date = new Date()): Promise<{ nudged: s
   const nudged: string[] = [];
   const exhausted: string[] = [];
   for (const s of stale) {
+    // Prazo progressivo: o nudge N (0-indexado por nudgeCount) só é devido
+    // NUDGE_DELAYS_MS[nudgeCount] depois da última mensagem do assistente.
+    const delay = NUDGE_DELAYS_MS[Math.min(s.nudgeCount, NUDGE_DELAYS_MS.length - 1)];
+    const lastActivity = Math.max(s.lastOutboundAt?.getTime() ?? 0, s.lastInboundAt?.getTime() ?? 0, s.createdAt.getTime());
+    if (now.getTime() - lastActivity < delay) continue;
     if (s.nudgeCount >= HARD_LIMITS.MAX_NUDGES) {
       await prisma.assistantSession.update({ where: { id: s.id }, data: { state: ASSISTANT_STATE.SEM_RESPOSTA } });
       await executeAssistantTool("criar_tarefa", { dealId: s.dealId, titulo: "Lead sem resposta após 3 lembretes do assistente", descricao: "Decidir seguimento humano ou fecho como perdido (Sem Resposta).", prioridade: "NORMAL" });
