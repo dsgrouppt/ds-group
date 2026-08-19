@@ -8,15 +8,30 @@ import {
   scoreDecisor,
   extractBudgetEur,
   looksLikeAvailability,
+  recusaOrcamento,
 } from "../../src/lib/assistant/intents";
 import { ASSISTANT_STATE, TERMINAL_STATES, transitionAllowed, isAssistantState } from "../../src/lib/assistant/states";
 
-test("localização: área de atuação=2, limítrofe=1, incompreensível=undefined", () => {
+test("localização (P2+6.1): área=2, fora-da-zona=0, não reconhecida=undefined (limítrofe é decisão humana)", () => {
   assert.equal(scoreLocalizacao("O apartamento fica em Cascais"), 2);
   assert.equal(scoreLocalizacao("moro no Porto"), 2);
-  assert.equal(scoreLocalizacao("é na Amadora"), 1);
-  assert.equal(scoreLocalizacao("fica no estrangeiro, em Paris"), undefined);
+  // Fora da área claramente reconhecível → 0 (o guião continua; triagem humana decide)
+  assert.equal(scoreLocalizacao("a casa é em Faro"), 0);
+  assert.equal(scoreLocalizacao("fica no Algarve"), 0);
+  assert.equal(scoreLocalizacao("fica no estrangeiro, em Paris"), 0);
+  // Zona limítrofe/não prevista → undefined: o assistente NUNCA atribui 1
+  // ponto sozinho (decisão 6.1) — segue para triagem humana via skip.
+  assert.equal(scoreLocalizacao("é na Amadora"), undefined);
+  assert.equal(scoreLocalizacao("é em Rio de Mouro"), undefined);
   assert.equal(scoreLocalizacao(""), undefined);
+});
+
+test("recusa de orçamento (P5): detetada e distinta de valor/incompreensão", () => {
+  assert.equal(recusaOrcamento("prefiro não dizer"), true);
+  assert.equal(recusaOrcamento("não tenho um valor definido"), true);
+  assert.equal(recusaOrcamento("isso é privado"), true);
+  assert.equal(recusaOrcamento("uns 30 mil"), false);
+  assert.equal(recusaOrcamento("o que é que acham?"), false);
 });
 
 test("tipo de obra: completa=2, parcial=1, avulso=0, ambíguo=undefined", () => {
@@ -74,11 +89,12 @@ test("máquina de estados: transições legais e ilegais", () => {
   assert.equal(transitionAllowed(ASSISTANT_STATE.CONTACTADO, "INVENTADO"), false);
 });
 
-test("estados terminais não têm saídas", () => {
+test("estados terminais: única saída legal é SEM_RESPOSTA→ESCALADO (P1, reativação)", () => {
   for (const s of TERMINAL_STATES) {
     assert.ok(isAssistantState(s));
     for (const to of Object.values(ASSISTANT_STATE)) {
-      assert.equal(transitionAllowed(s, to), false, `${s} -> ${to} devia ser proibido`);
+      const permitida = s === ASSISTANT_STATE.SEM_RESPOSTA && to === ASSISTANT_STATE.ESCALADO;
+      assert.equal(transitionAllowed(s, to), permitida, `${s} -> ${to} devia ser ${permitida ? "permitido" : "proibido"}`);
     }
   }
 });

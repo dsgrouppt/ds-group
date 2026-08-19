@@ -66,6 +66,14 @@ test("inbound: deteta gatilhos de escalonamento", () => {
   assert.ok(detectEscalationTriggers("preciso de arranjar o telhado").triggers.includes("fora_de_catalogo"));
 });
 
+test("inbound: urgência extrema dispara gatilho; urgência comercial normal NÃO (P3)", () => {
+  assert.ok(detectEscalationTriggers("tenho uma infiltração e a casa está a alagar").triggers.includes("urgencia_extrema"));
+  assert.ok(detectEscalationTriggers("rebentou um cano na cozinha, é uma emergência").triggers.includes("urgencia_extrema"));
+  assert.ok(detectEscalationTriggers("é urgente mesmo, tenho prazo de escritura").triggers.includes("urgencia_extrema"));
+  assert.equal(detectEscalationTriggers("queríamos avançar o quanto antes").triggers.includes("urgencia_extrema"), false);
+  assert.equal(detectEscalationTriggers("tenho alguma urgência em começar").triggers.includes("urgencia_extrema"), false);
+});
+
 test("inbound: deteta opt-out e não confunde com conversa normal", () => {
   assert.equal(detectEscalationTriggers("STOP").optOut, true);
   assert.equal(detectEscalationTriggers("não me contactem mais").optOut, true);

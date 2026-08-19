@@ -110,27 +110,188 @@ test("opt-out silencia imediatamente e cria tarefa RGPD", async () => {
   const r = await processInbound({ dealId, canal: "EMAIL", texto: "não me contactem mais, por favor" });
   assert.equal(r.stateAfter, ASSISTANT_STATE.OPT_OUT);
   assert.ok(await prisma.task.findFirst({ where: { dealId, title: { contains: "opt-out" } } }));
+  // Após P1 (19.08.2026), uma nova mensagem em OPT_OUT já não é ignorada:
+  // é tratada como reativação (tarefa RGPD para decisão humana), mas
+  // continua a NÃO haver qualquer resposta automática ao lead.
   const after = await processInbound({ dealId, canal: "EMAIL", texto: "..." });
-  assert.equal(after.processed, false);
+  assert.equal(after.stateAfter, ASSISTANT_STATE.OPT_OUT, "o estado nunca muda sozinho");
+  assert.equal(after.plannedMessages.length, 0, "silêncio absoluto para quem pediu opt-out");
 });
 
-test("nudges: máximo 3, depois SEM_RESPOSTA com tarefa humana", async () => {
+// Instante fixo DENTRO do horário comercial (terça, 25.08.2026, 11:00 Lisboa)
+// e outro FORA (04:00 Lisboa) — decisão 6.3.
+const NOW_BIZ = new Date("2026-08-25T10:00:00Z");
+const NOW_NIGHT = new Date("2026-08-25T03:00:00Z");
+const backdate = (ms: number) => new Date(NOW_BIZ.getTime() - ms);
+const DAY = 24 * 60 * 60 * 1000;
+
+test("nudges: cadência progressiva 24h/72h/7d, máx. 3, depois SEM_RESPOSTA (6.2)", async () => {
   const { dealId } = await createLead();
   await ensureSession(dealId, "EMAIL");
   await processInbound({ dealId, canal: "EMAIL", texto: "quero remodelar a casa toda" }); // entra em QUALIFICACAO
 
-  const old = new Date(Date.now() - 48 * 60 * 60 * 1000);
-  for (let i = 1; i <= 3; i++) {
-    await prisma.assistantSession.update({ where: { dealId }, data: { lastInboundAt: old, lastOutboundAt: old } });
-    const sweep = await runNudgeSweep();
-    assert.ok(sweep.nudged.includes(dealId), `nudge ${i} devia acontecer`);
-    const s = await prisma.assistantSession.findUniqueOrThrow({ where: { dealId } });
-    assert.equal(s.nudgeCount, i);
-  }
-  await prisma.assistantSession.update({ where: { dealId }, data: { lastInboundAt: old, lastOutboundAt: old } });
-  const final = await runNudgeSweep();
+  // Nudge 1: devido às 24h — com 25h de silêncio, dispara.
+  await prisma.assistantSession.update({ where: { dealId }, data: { lastInboundAt: backdate(25 * 60 * 60 * 1000), lastOutboundAt: backdate(25 * 60 * 60 * 1000), createdAt: backdate(30 * 60 * 60 * 1000) } });
+  let sweep = await runNudgeSweep(NOW_BIZ);
+  assert.ok(sweep.nudged.includes(dealId), "nudge 1 às 24h devia disparar");
+
+  // Nudge 2: exige 72h desde o nudge 1 — com só 25h, NÃO dispara.
+  await prisma.assistantSession.update({ where: { dealId }, data: { lastInboundAt: backdate(25 * 60 * 60 * 1000), lastOutboundAt: backdate(25 * 60 * 60 * 1000) } });
+  sweep = await runNudgeSweep(NOW_BIZ);
+  assert.equal(sweep.nudged.includes(dealId), false, "nudge 2 antes de 72h NÃO devia disparar");
+
+  // Com 4 dias de silêncio, o nudge 2 dispara; e o 3 exige 7 dias.
+  await prisma.assistantSession.update({ where: { dealId }, data: { lastInboundAt: backdate(4 * DAY), lastOutboundAt: backdate(4 * DAY), createdAt: backdate(20 * DAY) } });
+  sweep = await runNudgeSweep(NOW_BIZ);
+  assert.ok(sweep.nudged.includes(dealId), "nudge 2 às 72h devia disparar");
+
+  await prisma.assistantSession.update({ where: { dealId }, data: { lastInboundAt: backdate(8 * DAY), lastOutboundAt: backdate(8 * DAY) } });
+  sweep = await runNudgeSweep(NOW_BIZ);
+  assert.ok(sweep.nudged.includes(dealId), "nudge 3 aos 7 dias devia disparar");
+  const s3 = await prisma.assistantSession.findUniqueOrThrow({ where: { dealId } });
+  assert.equal(s3.nudgeCount, 3);
+
+  // Esgotados: mais 7 dias de silêncio → SEM_RESPOSTA + tarefa humana.
+  await prisma.assistantSession.update({ where: { dealId }, data: { lastInboundAt: backdate(8 * DAY), lastOutboundAt: backdate(8 * DAY) } });
+  const final = await runNudgeSweep(NOW_BIZ);
   assert.ok(final.exhausted.includes(dealId));
   const s = await prisma.assistantSession.findUniqueOrThrow({ where: { dealId } });
   assert.equal(s.state, ASSISTANT_STATE.SEM_RESPOSTA);
   assert.ok(await prisma.task.findFirst({ where: { dealId, title: { contains: "sem resposta" } } }));
+});
+
+test("nudges: nunca fora do horário comercial (6.3)", async () => {
+  const { dealId } = await createLead();
+  await ensureSession(dealId, "EMAIL");
+  await processInbound({ dealId, canal: "EMAIL", texto: "quero remodelar a casa toda" });
+  await prisma.assistantSession.update({ where: { dealId }, data: { lastInboundAt: backdate(8 * DAY), lastOutboundAt: backdate(8 * DAY), createdAt: backdate(9 * DAY) } });
+  const sweep = await runNudgeSweep(NOW_NIGHT);
+  assert.equal(sweep.skippedReason, "fora_de_horario_comercial");
+  assert.equal(sweep.nudged.length, 0);
+});
+
+test("reativação SEM_RESPOSTA (P1): lead que volta escala imediatamente para humano", async () => {
+  const { dealId } = await createLead();
+  await ensureSession(dealId, "EMAIL");
+  await prisma.assistantSession.update({ where: { dealId }, data: { state: ASSISTANT_STATE.SEM_RESPOSTA, nudgeCount: 3 } });
+
+  const r = await processInbound({ dealId, canal: "EMAIL", texto: "olá, afinal quero avançar com a obra" });
+  assert.equal(r.processed, true);
+  assert.equal(r.stateAfter, ASSISTANT_STATE.ESCALADO);
+  const s = await prisma.assistantSession.findUniqueOrThrow({ where: { dealId } });
+  assert.equal(s.humanTakeover, true);
+  const task = await prisma.task.findFirstOrThrow({ where: { dealId, title: { contains: "escalou" } } });
+  assert.equal(task.priority, "URGENTE");
+  assert.match(task.description ?? "", /nudges esgotados/);
+});
+
+test("reativação CONCLUIDO (P1): tarefa NORMAL deduplicada a 24h", async () => {
+  const { dealId } = await createLead();
+  await ensureSession(dealId, "EMAIL");
+  await prisma.assistantSession.update({ where: { dealId }, data: { state: ASSISTANT_STATE.CONCLUIDO } });
+
+  const r1 = await processInbound({ dealId, canal: "EMAIL", texto: "afinal talvez queira algo maior" });
+  assert.equal(r1.processed, true);
+  assert.equal(r1.stateAfter, ASSISTANT_STATE.CONCLUIDO);
+  assert.equal(await prisma.task.count({ where: { dealId, title: { contains: "retomou contacto" } } }), 1);
+
+  const r2 = await processInbound({ dealId, canal: "EMAIL", texto: "estão aí?" });
+  assert.equal(r2.reason, "reativacao_deduplicada");
+  assert.equal(await prisma.task.count({ where: { dealId, title: { contains: "retomou contacto" } } }), 1, "não pode duplicar a tarefa em 24h");
+});
+
+test("reativação OPT_OUT (P1): tarefa ALTA (RGPD) e ZERO resposta automática", async () => {
+  const { dealId } = await createLead();
+  await ensureSession(dealId, "EMAIL");
+  await prisma.assistantSession.update({ where: { dealId }, data: { state: ASSISTANT_STATE.OPT_OUT } });
+
+  const r = await processInbound({ dealId, canal: "EMAIL", texto: "afinal podem contactar-me" });
+  assert.equal(r.processed, true);
+  assert.equal(r.stateAfter, ASSISTANT_STATE.OPT_OUT, "estado não muda — decisão humana");
+  assert.equal(r.plannedMessages.length, 0, "nenhuma resposta automática a um lead em opt-out");
+  const task = await prisma.task.findFirstOrThrow({ where: { dealId, title: { contains: "opt-out voltou" } } });
+  assert.equal(task.priority, "ALTA");
+});
+
+test("fora-da-zona (P2): pontua 0, completa o guião e chega à triagem — nunca 'sem progresso'", async () => {
+  const { dealId } = await createLead();
+  await ensureSession(dealId, "EMAIL");
+  await processInbound({ dealId, canal: "EMAIL", texto: "quero remodelar a casa toda" }); // tipoObra=2
+  const r = await processInbound({ dealId, canal: "EMAIL", texto: "a casa é em Faro" }); // localizacao=0 → guião continua
+  assert.equal(r.stateAfter, ASSISTANT_STATE.QUALIFICACAO, "não pode escalar por zona");
+  await processInbound({ dealId, canal: "EMAIL", texto: "o quanto antes" }); // prazo=2
+  await processInbound({ dealId, canal: "EMAIL", texto: "uns 60 mil" }); // orcamento=2
+  await processInbound({ dealId, canal: "EMAIL", texto: "decido eu" }); // decisor=2 → FOTOS
+  const fim = await processInbound({ dealId, canal: "EMAIL", texto: "não tenho fotos" });
+  const deal = await prisma.deal.findUniqueOrThrow({ where: { id: dealId } });
+  assert.equal(deal.qualificationScore, 8, "2+0+2+2+2 — zona 0 não interrompe nada");
+  assert.equal(fim.stateAfter, ASSISTANT_STATE.AGENDAMENTO, "QUALIFICADO segue para visita; zona vai no dossier");
+});
+
+test("zona não reconhecida (6.1): assistente NÃO decide limítrofe — marca por avaliar e triagem humana no fecho", async () => {
+  const { dealId } = await createLead();
+  await ensureSession(dealId, "EMAIL");
+  await processInbound({ dealId, canal: "EMAIL", texto: "quero remodelar a casa toda" }); // tipoObra=2
+  await processInbound({ dealId, canal: "EMAIL", texto: "é em Rio de Mouro" }); // não reconhecida → repergunta
+  const r2 = await processInbound({ dealId, canal: "EMAIL", texto: "já disse, Rio de Mouro" }); // 2.ª volta → skip, segue
+  assert.equal(r2.stateAfter, ASSISTANT_STATE.QUALIFICACAO, "não escala por 'sem progresso'");
+  await processInbound({ dealId, canal: "EMAIL", texto: "o quanto antes" });
+  await processInbound({ dealId, canal: "EMAIL", texto: "uns 60 mil" });
+  await processInbound({ dealId, canal: "EMAIL", texto: "decido eu" }); // 4/5 + localizacao por avaliar → FOTOS
+  const fim = await processInbound({ dealId, canal: "EMAIL", texto: "não tenho fotos" });
+  assert.equal(fim.stateAfter, ASSISTANT_STATE.ESCALADO, "fecho sem os 5 critérios → triagem humana");
+  const task = await prisma.task.findFirstOrThrow({ where: { dealId, title: { contains: "escalou" } } });
+  assert.match(task.description ?? "", /localizacao/);
+  const deal = await prisma.deal.findUniqueOrThrow({ where: { id: dealId } });
+  assert.equal(deal.qualificationScore, null, "o score fica para o humano preencher");
+});
+
+test("urgência extrema (P3): salta a qualificação e escala com mensagem de transição", async () => {
+  const { dealId } = await createLead();
+  await ensureSession(dealId, "EMAIL");
+  const r = await processInbound({ dealId, canal: "EMAIL", texto: "tenho uma infiltração, a casa está a alagar!" });
+  assert.equal(r.stateAfter, ASSISTANT_STATE.ESCALADO);
+  assert.ok(r.plannedMessages.some((m) => m.includes("Compreendo a urgência")), "mensagem de transição urgente planeada");
+  const task = await prisma.task.findFirstOrThrow({ where: { dealId, title: { contains: "escalou" } } });
+  assert.match(task.description ?? "", /URGENTE — contactar por telefone/);
+});
+
+test("POTENCIAL (P4): sem promoção no pipeline; visita com tarefa ALTA e nota de validação", async () => {
+  const { dealId } = await createLead();
+  await ensureSession(dealId, "EMAIL");
+  await processInbound({ dealId, canal: "EMAIL", texto: "queria remodelar a cozinha" }); // tipoObra=1
+  await processInbound({ dealId, canal: "EMAIL", texto: "fica em Lisboa" }); // localizacao=2
+  await processInbound({ dealId, canal: "EMAIL", texto: "estou só a pesquisar, sem pressa" }); // prazo=0
+  await processInbound({ dealId, canal: "EMAIL", texto: "uns 25 mil" }); // orcamento=1
+  await processInbound({ dealId, canal: "EMAIL", texto: "tenho de falar com o meu marido primeiro" }); // decisor=1 → total 5 = POTENCIAL
+  const fotos = await processInbound({ dealId, canal: "EMAIL", texto: "não tenho fotos" });
+  assert.equal(fotos.stateAfter, ASSISTANT_STATE.AGENDAMENTO);
+
+  const deal1 = await prisma.deal.findUniqueOrThrow({ where: { id: dealId } });
+  assert.equal(deal1.qualificationCategory, "POTENCIAL");
+  assert.equal(deal1.stage, "NOVO_LEAD", "POTENCIAL nunca é promovido pelo assistente");
+
+  const r = await processInbound({ dealId, canal: "EMAIL", texto: "posso na quarta de manhã" });
+  assert.equal(r.stateAfter, ASSISTANT_STATE.VISITA_PROPOSTA);
+  const task = await prisma.task.findFirstOrThrow({ where: { dealId, title: { contains: "Confirmar visita" } } });
+  assert.equal(task.priority, "ALTA");
+  assert.match(task.description ?? "", /POTENCIAL \(score 5\/10\) — validar por telefone/);
+});
+
+test("recusa de orçamento (P5): aceita, segue o guião e o fecho vai a triagem humana com motivo específico", async () => {
+  const { dealId } = await createLead();
+  await ensureSession(dealId, "EMAIL");
+  await processInbound({ dealId, canal: "EMAIL", texto: "quero remodelar a casa toda" }); // tipoObra=2
+  await processInbound({ dealId, canal: "EMAIL", texto: "fica em Oeiras" }); // localizacao=2
+  await processInbound({ dealId, canal: "EMAIL", texto: "o quanto antes" }); // prazo=2
+  const rec = await processInbound({ dealId, canal: "EMAIL", texto: "prefiro não dizer" }); // orcamento recusado → segue
+  assert.equal(rec.stateAfter, ASSISTANT_STATE.QUALIFICACAO, "não repete a pergunta nem escala");
+  assert.ok(rec.plannedMessages.some((m) => m.includes("Sem problema")), "aceita a recusa com naturalidade");
+  await processInbound({ dealId, canal: "EMAIL", texto: "decido eu" }); // decisor=2 → FOTOS (4/5 + recusado)
+  const fim = await processInbound({ dealId, canal: "EMAIL", texto: "não tenho fotos" });
+  assert.equal(fim.stateAfter, ASSISTANT_STATE.ESCALADO, "régua exige os 5 → triagem humana");
+  const task = await prisma.task.findFirstOrThrow({ where: { dealId, title: { contains: "escalou" } } });
+  assert.match(task.description ?? "", /orcamento/);
+  const deal = await prisma.deal.findUniqueOrThrow({ where: { id: dealId } });
+  assert.equal(deal.qualificationScore, null, "score nunca é fechado automaticamente sem os 5");
 });
