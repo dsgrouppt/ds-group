@@ -22,7 +22,12 @@ export interface GuardrailVerdict {
 }
 
 // Padrões de dinheiro/percentagem: "12.500€", "€ 300", "12 mil euros", "30%".
-const MONEY_RE = /(\d[\d\s.,]*\s?(€|euros?|eur)\b)|((€)\s?\d)|(\d+\s?%)|(\b\d+\s?mil\b)/i;
+// CORRIGIDO 20.08.2026 (defeito encontrado pela suite red-team): a versao
+// anterior tinha \b DEPOIS da alternacao de moeda, o que fazia falhar todos
+// os casos em que "EUR" simbolo era seguido de espaco, ponto ou fim de frase
+// — ou seja, quase todas as frases reais ("25.000€.", "800€ por m2"). O \b
+// aplica-se agora so as formas por extenso.
+const MONEY_RE = /(\d[\d\s.,]*\s?(?:€|\beuros?\b|\beur\b))|(€\s?\d)|(\d+\s?%)|(\b\d+\s?mil\b)/i;
 // Compromissos de calendário/execução: datas, durações e promessas de início/fim de obra.
 const EXECUTION_DATE_RE = /\b(começamos|comecamos|iniciamos|arrancamos|terminamos|acabamos|entregamos|fica pronto|fica pronta|estará pronto|estara pronto|demora(m)?|leva(m)?\s+(cerca de\s+)?\d+|\d+\s?(dias?|semanas?|meses)\b|prazo de execução|prazo de execucao|data de início|data de inicio)/i;
 // Descontos/promoções/negociação de preço.
@@ -46,7 +51,9 @@ export function validateOutboundText(text: string): GuardrailVerdict {
 
 // ── Gatilhos de escalonamento no texto do lead ──
 
-const ASKS_PRICE_RE = /\b(quanto custa|quanto fica|quanto é|quanto e|preço|preco|orçamento de quanto|orcamento de quanto|valor (aproximado|estimado)|dá para fazer por|da para fazer por|estimativa)\b/i;
+// Alargado 20.08.2026 (red-team): perguntas de preco indiretas — "media por
+// metro quadrado", "quanto ficaria", "valor por m2" — nao eram apanhadas.
+const ASKS_PRICE_RE = /(\b(quanto custa|quanto fica|quanto ficaria|quanto é|quanto e|preço|preco|orçamento de quanto|orcamento de quanto|valor (aproximado|estimado|por)|dá para fazer por|da para fazer por|estimativa|quanto (é que )?(custam|custaria|cobram))\b)|((média|media|valor|preço|preco|custo)[^.?!]{0,20}(por|\/)\s?(m2|m²|metro quadrado))/i;
 const ASKS_DISCOUNT_RE = /\b(desconto|mais barato|baixar o preço|baixar o preco|negociar|melhor oferta)\b/i;
 const ASKS_DATES_RE = /\b(quando (podem|conseguem) (começar|comecar)|para quando|quanto tempo demora|prazo de execução|prazo de execucao|data de início|data de inicio)\b/i;
 const WANTS_HUMAN_RE = /\b(falar com (uma pessoa|alguém|alguem|um humano|o responsável|o responsavel|o dono|um comercial)|não quero falar com (um |uma )?(robô|robo|bot|máquina|maquina)|nao quero falar com (um |uma )?(robô|robo|bot|máquina|maquina)|chamada|liguem-me|ligar-me|telefonem)\b/i;
