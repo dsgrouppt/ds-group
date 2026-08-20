@@ -42,7 +42,7 @@ export function OgImageLayout({ eyebrow, title }: { eyebrow: string; title: stri
             fontSize: 20,
             letterSpacing: 4,
             textTransform: "uppercase",
-            color: "#b08d57",
+            color: "#d4af37",
             fontFamily: "sans-serif",
             fontWeight: 400,
             marginBottom: 22,
@@ -60,12 +60,12 @@ export function OgImageLayout({ eyebrow, title }: { eyebrow: string; title: stri
           gap: 16,
           fontFamily: "sans-serif",
           fontSize: 20,
-          color: "#b08d57",
+            color: "#d4af37",
           letterSpacing: 4,
           textTransform: "uppercase",
         }}
       >
-        <div style={{ width: 40, height: 1, background: "#b08d57" }} />
+        <div style={{ width: 40, height: 1, background: "#d4af37" }} />
         Uma empresa DS Group
       </div>
     </div>
