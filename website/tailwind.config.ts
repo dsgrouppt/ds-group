@@ -19,7 +19,7 @@ const config: Config = {
         mist: "#eeeeec",
         "mist-2": "#e2e2df",
         paper: "#f7f7f5",
-        gold: "#b08d57",
+        gold: "#d4af37",
       },
       fontFamily: {
         serif: ["var(--font-fraunces)", "serif"],
