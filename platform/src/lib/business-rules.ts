@@ -7,16 +7,24 @@
  */
 
 // Área de atuação (doc 05 §3 — critério "Localização" da qualificação).
-export const SERVICE_AREA_CITIES = [
-  "Lisboa",
-  "Porto",
-  "Cascais",
-  "Oeiras",
-  "Sintra",
-  "Vila Nova de Gaia",
-  "Matosinhos",
-  "Almada",
-] as const;
+//
+// Regra de negócio definitiva (missão CTO 29.08.2026, substitui a lista
+// fechada de 8 concelhos Lisboa/Porto aprovada em ago/2026): a DS Projects
+// trabalha em TODO O TERRITÓRIO NACIONAL (Portugal continental e ilhas) —
+// não existe exclusão geográfica. Para obras fora da zona prioritária,
+// procuram-se e validam-se profissionais/subempreiteiros na região da obra.
+// Espanha é expansão prevista para 2027 — NÃO é operação atual.
+//
+// PRIORITY_AREAS não é um limite: é só a(s) zona(s) de maior concentração
+// de serviço *atual*, usada para dar prioridade/pontuação máxima na
+// qualificação. Qualquer outra localização em Portugal é igualmente válida
+// (ver scoreLocalizacao em assistant/intents.ts e QUALIFICATION_CRITERIA em
+// qualification.ts), só entra com pontuação diferente porque pode implicar
+// mais deslocação/validação operacional — nunca porque está "fora de área".
+// Deliberadamente uma lista curta (não uma lista artificial de todos os
+// concelhos do país): acrescentar aqui só quando uma nova zona passar a ter
+// concentração de obras equivalente a Leiria.
+export const PRIORITY_AREAS = ["Leiria"] as const;
 
 // Orçamento mínimo viável e faixa alvo (doc 05 §3 — critério "Orçamento").
 // Espelha BUDGET_RANGE em enums.ts: R20_30K é o mínimo viável mas abaixo da
