@@ -10,39 +10,46 @@
  * valores próprios.
  */
 
-import { SERVICE_AREA_CITIES, MIN_VIABLE_BUDGET_EUR, TARGET_BUDGET_RANGE_EUR } from "@/lib/business-rules";
+import { PRIORITY_AREAS, MIN_VIABLE_BUDGET_EUR, TARGET_BUDGET_RANGE_EUR } from "@/lib/business-rules";
 import type { QualificationCriterionKey, QualificationCriterionScore } from "@/lib/qualification";
 
 function normalize(text: string): string {
-  return (text || "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "");
+  return (text || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 }
 
 /**
- * Localização (P2 + decisão 6.1 da validação final, aprovadas 19.08.2026):
- *  - 2 = cidade da área de atuação aprovada (business-rules.ts);
- *  - 0 = claramente fora da área (cidades portuguesas distantes ou
- *        estrangeiro) — o guião CONTINUA e o lead chega à triagem humana
- *        com o dossier completo; o assistente nunca rejeita por zona;
- *  - undefined = zona não reconhecida — o assistente NÃO decide
- *        automaticamente se é "limítrofe": não existe lista aprovada de
- *        zonas limítrofes, portanto a pontuação 1 é EXCLUSIVA de humanos.
- *        O motor repergunta uma vez e, se continuar por reconhecer,
- *        marca o critério como "por avaliar" e entrega à triagem humana
- *        no fecho (ver engine.ts).
+ * Localização — cobertura NACIONAL (missão CTO 29.08.2026, substitui a
+ * lista fechada de 8 concelhos e a lista OUT_OF_AREA_PT anteriores, que
+ * tratavam a maior parte do país — incluindo Leiria — como "fora de
+ * área"). A DS Projects trabalha em todo o território nacional; não existe
+ * exclusão geográfica. A pontuação reflete operação/deslocação, nunca uma
+ * rejeição por zona:
+ *  - 2 = zona prioritária atual (PRIORITY_AREAS, business-rules.ts —
+ *        maior concentração de serviço agora, ex.: Leiria);
+ *  - 1 = qualquer outra localização em Portugal (continente ou ilhas) —
+ *        válida, só implica confirmar deslocação/subempreiteiro local;
+ *  - 0 = claramente fora de Portugal (estrangeiro) — Espanha é expansão
+ *        prevista para 2027, ainda não é operação atual. O guião CONTINUA
+ *        e o lead chega à triagem humana com o dossier completo; o
+ *        assistente nunca rejeita automaticamente por zona;
+ *  - undefined = zona não reconhecida — o motor repergunta uma vez e, se
+ *        continuar sem reconhecer, marca o critério como "por avaliar" e
+ *        entrega à triagem humana no fecho (ver engine.ts).
+ *
+ * Lista de cidades reconhecidas deliberadamente curta (não é uma lista
+ * exaustiva de concelhos de Portugal) — serve só para reconhecer texto
+ * livre do lead com confiança; qualquer cidade portuguesa não listada cai
+ * em "zona não reconhecida" (repergunta), nunca em "fora de área".
  */
-const OUT_OF_AREA_PT = ["faro", "portimao", "albufeira", "lagos", "tavira", "olhao", "evora", "beja", "coimbra", "leiria", "aveiro", "viseu", "guarda", "castelo branco", "portalegre", "santarem", "braganca", "vila real", "viana do castelo", "covilha", "funchal", "madeira", "ponta delgada", "acores", "algarve", "alentejo"];
-const FOREIGN_HINTS = ["paris", "londres", "london", "madrid", "genebra", "zurique", "luxemburgo", "bruxelas", "franca", "inglaterra", "suica", "alemanha", "estrangeiro", "fora de portugal", "luanda", "maputo", "brasil", "sao paulo"];
+const PT_OTHER_RECOGNIZED = ["lisboa", "porto", "cascais", "oeiras", "sintra", "vila nova de gaia", "matosinhos", "almada", "faro", "portimao", "albufeira", "lagos", "tavira", "olhao", "evora", "beja", "coimbra", "aveiro", "viseu", "guarda", "castelo branco", "portalegre", "santarem", "braganca", "vila real", "viana do castelo", "covilha", "funchal", "madeira", "ponta delgada", "angra do heroismo", "acores", "algarve", "alentejo"];
+const FOREIGN_HINTS = ["paris", "londres", "london", "madrid", "barcelona", "espanha", "genebra", "zurique", "luxemburgo", "bruxelas", "franca", "inglaterra", "suica", "alemanha", "estrangeiro", "fora de portugal", "luanda", "maputo", "brasil", "sao paulo"];
 
 export function scoreLocalizacao(text: string): QualificationCriterionScore | undefined {
   const t = normalize(text);
   if (!t.trim()) return undefined;
-  for (const city of SERVICE_AREA_CITIES) {
-    if (t.includes(normalize(city))) return 2;
-  }
-  if (OUT_OF_AREA_PT.some((z) => t.includes(z)) || FOREIGN_HINTS.some((z) => t.includes(z))) return 0;
+  for (const city of PRIORITY_AREAS) { if (t.includes(normalize(city))) return 2; }
+  if (FOREIGN_HINTS.some((z) => t.includes(z))) return 0;
+  if (PT_OTHER_RECOGNIZED.some((z) => t.includes(z))) return 1;
   return undefined;
 }
 
@@ -50,8 +57,7 @@ export function scoreLocalizacao(text: string): QualificationCriterionScore | un
 export function scoreTipoObra(text: string): QualificationCriterionScore | undefined {
   const t = normalize(text);
   if (!t.trim()) return undefined;
-  // Avulso primeiro (mais específico): "só pintura de uma sala" é avulso,
-  // mesmo mencionando uma divisão — a ordem dos testes é deliberada.
+  // Avulso primeiro (mais específico): "só pintura de uma sala" é avulso, mesmo mencionando uma divisão — a ordem dos testes é deliberada.
   if (/(so pintura|apenas pintura|so pintar|pintar (uma|a) parede|trocar (uma|a) torneira|pequeno arranjo|arranjo pontual|reparacao pontual|so o chao|apenas o chao|trocar o chao de uma)/.test(t)) return 0;
   if (/(remodelacao (total|completa|integral)|casa (toda|inteira)|apartamento (todo|inteiro)|obra completa|gestao (integral|completa|do projeto)|remodelar tudo|t[0-9]\s?(completo|todo|inteiro))/.test(t)) return 2;
   if (/(cozinha|casa de banho|casas de banho|wc|quarto|sala|sotao|garagem|varanda|marquise|uma divisao|duas divisoes)/.test(t)) return 1;
@@ -60,23 +66,15 @@ export function scoreTipoObra(text: string): QualificationCriterionScore | undef
 
 /** Extrai um valor em euros do texto ("30 mil", "45.000€", "entre 30 e 50 mil"). Devolve o MAIOR valor referido. */
 export function extractBudgetEur(text: string): number | undefined {
-  const t = normalize(text).replace(/ /g, " ");
+  const t = normalize(text).replace(/ /g, " ");
   let max: number | undefined;
-  const consider = (n: number) => {
-    if (Number.isFinite(n) && n > 0) max = max === undefined ? n : Math.max(max, n);
-  };
+  const consider = (n: number) => { if (Number.isFinite(n) && n > 0) max = max === undefined ? n : Math.max(max, n); };
   // "30 mil", "30m€" — milhares por extenso.
-  for (const m of t.matchAll(/(\d+(?:[.,]\d+)?)\s*mil/g)) {
-    consider(parseFloat(m[1].replace(",", ".")) * 1000);
-  }
+for (const m of t.matchAll(/(\d+(?:[.,]\d+)?)\s*mil/g)) { consider(parseFloat(m[1].replace(",", ".")) * 1000); }
   // "45.000", "45000", "45 000" (com ou sem €/euros por perto).
-  for (const m of t.matchAll(/(\d{1,3}(?:[\s.]\d{3})+|\d{4,})(?!\s*mil)/g)) {
-    consider(parseInt(m[1].replace(/[\s.]/g, ""), 10));
-  }
+for (const m of t.matchAll(/(\d{1,3}(?:[\s.]\d{3})+|\d{4,})(?!\s*mil)/g)) { consider(parseInt(m[1].replace(/[\s.]/g, ""), 10)); }
   // "45k"
-  for (const m of t.matchAll(/(\d+(?:[.,]\d+)?)\s*k\b/g)) {
-    consider(parseFloat(m[1].replace(",", ".")) * 1000);
-  }
+for (const m of t.matchAll(/(\d+(?:[.,]\d+)?)\s*k\b/g)) { consider(parseFloat(m[1].replace(",", ".")) * 1000); }
   return max;
 }
 
@@ -123,13 +121,7 @@ export function scoreDecisor(text: string): QualificationCriterionScore | undefi
   return undefined;
 }
 
-export const CRITERION_SCORERS: Record<QualificationCriterionKey, (text: string) => QualificationCriterionScore | undefined> = {
-  localizacao: scoreLocalizacao,
-  tipoObra: scoreTipoObra,
-  orcamento: scoreOrcamento,
-  prazoUrgencia: scorePrazo,
-  decisor: scoreDecisor,
-};
+export const CRITERION_SCORERS: Record<QualificationCriterionKey, (text: string) => QualificationCriterionScore | undefined> = { localizacao: scoreLocalizacao, tipoObra: scoreTipoObra, orcamento: scoreOrcamento, prazoUrgencia: scorePrazo, decisor: scoreDecisor };
 
 /** Ordem de recolha na conversa (a mais natural comercialmente). */
 export const CRITERIA_ORDER: readonly QualificationCriterionKey[] = ["tipoObra", "localizacao", "prazoUrgencia", "orcamento", "decisor"];
