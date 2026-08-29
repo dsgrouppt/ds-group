@@ -1,5 +1,5 @@
 import { QUALIFICATION_CATEGORY, type QualificationCategoryValue } from "./enums";
-import { SERVICE_AREA_CITIES, MIN_VIABLE_BUDGET_EUR, TARGET_BUDGET_RANGE_EUR } from "./business-rules";
+import { PRIORITY_AREAS, MIN_VIABLE_BUDGET_EUR, TARGET_BUDGET_RANGE_EUR } from "./business-rules";
 
 /**
  * Score de qualificação de leads — doc 05 §3. Sistema de pontuação de 0 a
@@ -41,7 +41,7 @@ interface CriterionDefinition {
   options: CriterionOption[];
 }
 
-const areaList = SERVICE_AREA_CITIES.join(", ");
+const priorityAreaList = PRIORITY_AREAS.join(", ");
 const targetRangeLabel = `${TARGET_BUDGET_RANGE_EUR.min.toLocaleString("pt-PT")}€–${TARGET_BUDGET_RANGE_EUR.max.toLocaleString("pt-PT")}€+`;
 const minBudgetLabel = MIN_VIABLE_BUDGET_EUR.toLocaleString("pt-PT");
 
@@ -49,11 +49,16 @@ export const QUALIFICATION_CRITERIA: CriterionDefinition[] = [
   {
     key: "localizacao",
     label: "Localização",
-    helpText: `Área de atuação principal: ${areaList}.`,
+    // Cobertura nacional (missão CTO 29.08.2026) — Portugal continental e
+        // ilhas são sempre área válida, nunca "fora de área". A distinção de
+        // pontos é operacional (deslocação/subempreiteiro local), não uma
+        // exclusão geográfica. Espanha é expansão prevista para 2027, ainda
+        // não é operação atual — por isso conta como 0 por agora.
+        helpText: `Cobertura nacional (Portugal continental e ilhas). Zona prioritária atual: ${priorityAreaList}. Fora de Portugal (ex.: Espanha) ainda não é operação atual — expansão prevista 2027.`,
     options: [
-      { value: 0, label: "Fora da área de atuação" },
-      { value: 1, label: "Zona limítrofe / a confirmar deslocação" },
-      { value: 2, label: "Dentro da área de atuação principal" },
+      { value: 0, label: "Fora de Portugal (não é operação atual)" },
+      { value: 1, label: "Portugal, fora da zona prioritária — a confirmar deslocação/subempreiteiro local" },
+      { value: 2, label: `Zona prioritária atual (${priorityAreaList})` },
     ],
   },
   {
