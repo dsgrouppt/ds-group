@@ -12,15 +12,24 @@ import {
 } from "../../src/lib/assistant/intents";
 import { ASSISTANT_STATE, TERMINAL_STATES, transitionAllowed, isAssistantState } from "../../src/lib/assistant/states";
 
-test("localização (P2+6.1): área=2, fora-da-zona=0, não reconhecida=undefined (limítrofe é decisão humana)", () => {
-  assert.equal(scoreLocalizacao("O apartamento fica em Cascais"), 2);
-  assert.equal(scoreLocalizacao("moro no Porto"), 2);
-  // Fora da área claramente reconhecível → 0 (o guião continua; triagem humana decide)
-  assert.equal(scoreLocalizacao("a casa é em Faro"), 0);
-  assert.equal(scoreLocalizacao("fica no Algarve"), 0);
+test("localização (cobertura nacional, missão CTO 29.08.2026): prioritária=2, resto de Portugal=1, estrangeiro=0, não reconhecida=undefined", () => {
+  // Zona prioritária atual (Leiria) → 2.
+  assert.equal(scoreLocalizacao("a obra é em Leiria"), 2);
+  assert.equal(scoreLocalizacao("moro em Leiria, perto do centro"), 2);
+  // Resto de Portugal (incl. cidades antes tratadas como "fora de área", e
+     // as ilhas) → 1, nunca 0: não há exclusão geográfica nacional.
+  assert.equal(scoreLocalizacao("O apartamento fica em Cascais"), 1);
+  assert.equal(scoreLocalizacao("moro no Porto"), 1);
+  assert.equal(scoreLocalizacao("a casa é em Lisboa"), 1);
+  assert.equal(scoreLocalizacao("a casa é em Faro"), 1);
+  assert.equal(scoreLocalizacao("fica no Algarve"), 1);
+  assert.equal(scoreLocalizacao("moro no Funchal, Madeira"), 1);
+  // Fora de Portugal → 0 (Espanha é expansão prevista 2027, ainda não é
+     // operação atual) — o guião CONTINUA, o assistente nunca rejeita por zona.
   assert.equal(scoreLocalizacao("fica no estrangeiro, em Paris"), 0);
-  // Zona limítrofe/não prevista → undefined: o assistente NUNCA atribui 1
-  // ponto sozinho (decisão 6.1) — segue para triagem humana via skip.
+  assert.equal(scoreLocalizacao("moro em Madrid, Espanha"), 0);
+  // Zona não reconhecida → undefined: o assistente NUNCA decide sozinho
+     // (decisão 6.1) — segue para triagem humana via skip.
   assert.equal(scoreLocalizacao("é na Amadora"), undefined);
   assert.equal(scoreLocalizacao("é em Rio de Mouro"), undefined);
   assert.equal(scoreLocalizacao(""), undefined);
