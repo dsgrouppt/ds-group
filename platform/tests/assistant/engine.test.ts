@@ -26,8 +26,10 @@ test("percurso feliz completo: lead → qualificação → fotos → score → Q
   assert.equal(r.stateAfter, ASSISTANT_STATE.QUALIFICACAO);
   assert.ok(r.plannedMessages.length > 0, "devia planear a pergunta seguinte");
 
-  // 2) Localização.
-  r = await processInbound({ dealId, canal: "WHATSAPP", texto: "O apartamento é em Oeiras" });
+  // 2) Localização — zona prioritária atual (Leiria), para o percurso
+  // "perfeito" atingir mesmo o score máximo (10) sob o modelo de cobertura
+  // nacional (missão CTO 29.08.2026).
+  r = await processInbound({ dealId, canal: "WHATSAPP", texto: "O apartamento é em Leiria" });
   assert.equal(r.stateAfter, ASSISTANT_STATE.QUALIFICACAO);
 
   // 3) Prazo.
@@ -74,7 +76,7 @@ test("lead FRACO: mensagem educada + triagem humana + CONCLUIDO, pipeline fica e
 
   await processInbound({ dealId, canal: "EMAIL", texto: "só pintura de uma parede da sala" }); // tipoObra=0
   await processInbound({ dealId, canal: "EMAIL", texto: "fica em Paris" }); // não percebido → repergunta 1
-  await processInbound({ dealId, canal: "EMAIL", texto: "é na Amadora" }); // localizacao=1
+  await processInbound({ dealId, canal: "EMAIL", texto: "é na Amadora" }); // localizacao não reconhecida (undefined)
   await processInbound({ dealId, canal: "EMAIL", texto: "estou só a pesquisar, sem pressa" }); // prazo=0
   await processInbound({ dealId, canal: "EMAIL", texto: "uns 5 mil euros" }); // orcamento=0
   const r = await processInbound({ dealId, canal: "EMAIL", texto: "é para um amigo, quem decide é ele" }); // decisor=0 → FOTOS
@@ -213,20 +215,38 @@ test("reativação OPT_OUT (P1): tarefa ALTA (RGPD) e ZERO resposta automática"
   assert.equal(task.priority, "ALTA");
 });
 
-test("fora-da-zona (P2): pontua 0, completa o guião e chega à triagem — nunca 'sem progresso'", async () => {
+test("fora de Portugal (cobertura nacional, missão CTO 29.08.2026): pontua 0, completa o guião e chega à triagem — nunca 'sem progresso'", async () => {
   const { dealId } = await createLead();
   await ensureSession(dealId, "EMAIL");
   await processInbound({ dealId, canal: "EMAIL", texto: "quero remodelar a casa toda" }); // tipoObra=2
-  const r = await processInbound({ dealId, canal: "EMAIL", texto: "a casa é em Faro" }); // localizacao=0 → guião continua
-  assert.equal(r.stateAfter, ASSISTANT_STATE.QUALIFICACAO, "não pode escalar por zona");
+    // Espanha é expansão prevista para 2027 (ainda não é operação atual) —
+    // é o único caso real de localizacao=0 sob o novo modelo. Uma cidade
+    // portuguesa (mesmo fora da zona prioritária, ex.: Faro) já não pontua 0.
+    const r = await processInbound({ dealId, canal: "EMAIL", texto: "a casa é em Madrid, Espanha" }); // localizacao=0 → guião continua
+    assert.equal(r.stateAfter, ASSISTANT_STATE.QUALIFICACAO, "não pode escalar por zona");
+    await processInbound({ dealId, canal: "EMAIL", texto: "o quanto antes" }); // prazo=2
+    await processInbound({ dealId, canal: "EMAIL", texto: "uns 60 mil" }); // orcamento=2
+    await processInbound({ dealId, canal: "EMAIL", texto: "decido eu" }); // decisor=2 → FOTOS
+    const fim = await processInbound({ dealId, canal: "EMAIL", texto: "não tenho fotos" });
+    const deal = await prisma.deal.findUniqueOrThrow({ where: { id: dealId } });
+    assert.equal(deal.qualificationScore, 8, "2+0+2+2+2 — zona 0 não interrompe nada");
+    assert.equal(fim.stateAfter, ASSISTANT_STATE.AGENDAMENTO, "QUALIFICADO segue para visita; zona vai no dossier");
+});
+
+test("Portugal fora da zona prioritária (cobertura nacional): pontua 1, nunca 0", async () => {
+  const { dealId } = await createLead();
+  await ensureSession(dealId, "EMAIL");
+  await processInbound({ dealId, canal: "EMAIL", texto: "quero remodelar a casa toda" }); // tipoObra=2
+  const r = await processInbound({ dealId, canal: "EMAIL", texto: "a casa é em Faro" }); // localizacao=1 (Portugal, fora da zona prioritária)
+  assert.equal(r.stateAfter, ASSISTANT_STATE.QUALIFICACAO);
   await processInbound({ dealId, canal: "EMAIL", texto: "o quanto antes" }); // prazo=2
   await processInbound({ dealId, canal: "EMAIL", texto: "uns 60 mil" }); // orcamento=2
   await processInbound({ dealId, canal: "EMAIL", texto: "decido eu" }); // decisor=2 → FOTOS
   const fim = await processInbound({ dealId, canal: "EMAIL", texto: "não tenho fotos" });
   const deal = await prisma.deal.findUniqueOrThrow({ where: { id: dealId } });
-  assert.equal(deal.qualificationScore, 8, "2+0+2+2+2 — zona 0 não interrompe nada");
-  assert.equal(fim.stateAfter, ASSISTANT_STATE.AGENDAMENTO, "QUALIFICADO segue para visita; zona vai no dossier");
-});
+  assert.equal(deal.qualificationScore, 9, "2+1+2+2+2 — Faro é Portugal, não é 'fora de área'");
+  assert.equal(fim.stateAfter, ASSISTANT_STATE.AGENDAMENTO);
+  });
 
 test("zona não reconhecida (6.1): assistente NÃO decide limítrofe — marca por avaliar e triagem humana no fecho", async () => {
   const { dealId } = await createLead();
@@ -260,7 +280,7 @@ test("POTENCIAL (P4): sem promoção no pipeline; visita com tarefa ALTA e nota 
   const { dealId } = await createLead();
   await ensureSession(dealId, "EMAIL");
   await processInbound({ dealId, canal: "EMAIL", texto: "queria remodelar a cozinha" }); // tipoObra=1
-  await processInbound({ dealId, canal: "EMAIL", texto: "fica em Lisboa" }); // localizacao=2
+  await processInbound({ dealId, canal: "EMAIL", texto: "fica em Leiria" }); // localizacao=2 (zona prioritária)
   await processInbound({ dealId, canal: "EMAIL", texto: "estou só a pesquisar, sem pressa" }); // prazo=0
   await processInbound({ dealId, canal: "EMAIL", texto: "uns 25 mil" }); // orcamento=1
   await processInbound({ dealId, canal: "EMAIL", texto: "tenho de falar com o meu marido primeiro" }); // decisor=1 → total 5 = POTENCIAL
@@ -282,7 +302,7 @@ test("recusa de orçamento (P5): aceita, segue o guião e o fecho vai a triagem 
   const { dealId } = await createLead();
   await ensureSession(dealId, "EMAIL");
   await processInbound({ dealId, canal: "EMAIL", texto: "quero remodelar a casa toda" }); // tipoObra=2
-  await processInbound({ dealId, canal: "EMAIL", texto: "fica em Oeiras" }); // localizacao=2
+  await processInbound({ dealId, canal: "EMAIL", texto: "fica em Leiria" }); // localizacao=2 (zona prioritária)
   await processInbound({ dealId, canal: "EMAIL", texto: "o quanto antes" }); // prazo=2
   const rec = await processInbound({ dealId, canal: "EMAIL", texto: "prefiro não dizer" }); // orcamento recusado → segue
   assert.equal(rec.stateAfter, ASSISTANT_STATE.QUALIFICACAO, "não repete a pergunta nem escala");
