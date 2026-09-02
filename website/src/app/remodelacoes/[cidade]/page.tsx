@@ -88,8 +88,8 @@ export default function LocalAreaPage({ params }: LocalPageProps) {
             <p className="text-graphite font-light leading-[1.85] text-[1.02rem] max-w-[52ch] mb-5 italic">
               {area.profileNote}
             </p>
-            <a href="/#contacto" className="btn btn-dark mt-6 inline-flex">
-              Pedir Estudo de Viabilidade
+            <a href="/estudo-de-viabilidade" className="btn btn-dark mt-6 inline-flex">
+              Pedir Orçamento
             </a>
           </Reveal>
 
