@@ -1,7 +1,7 @@
 export interface LocalArea {
   slug: string;
   name: string;
-  region: "Grande Lisboa" | "Grande Porto";
+  region: "Grande Lisboa" | "Grande Porto" | "Leiria e Região";
   intro: string;
   context: string[];
   profileNote: string;
@@ -15,6 +15,19 @@ export interface LocalArea {
  * zona. Evita o problema de "páginas finas" que penaliza SEO a prazo.
  */
 export const localAreas: LocalArea[] = [
+  {
+    slug: "leiria",
+    name: "Leiria",
+    region: "Leiria e Região",
+    intro:
+      "Gestão de projeto e remodelação em Leiria — zona prioritária atual da DS Projects, do centro histórico junto ao Castelo aos bairros residenciais mais recentes.",
+    context: [
+      "O centro de Leiria combina edifícios de traça mais antiga na zona junto ao Castelo e ao rio Lis — com as mesmas condicionantes técnicas típicas de construção pré-1980 (redes elétricas e de água a atualizar, isolamento térmico insuficiente) — com zonas residenciais de construção mais recente nos bairros em expansão do concelho.",
+      "Por ser a zona de maior concentração de obras da DS Projects, Leiria é onde a coordenação de equipas técnicas e subempreiteiros locais está mais consolidada, com prazos de resposta mais curtos entre o levantamento inicial e o arranque da obra.",
+    ],
+    profileNote:
+      "Perfil de projeto mais comum em Leiria: remodelação residencial completa de apartamento ou moradia, com foco em atualização de instalações e eficiência energética.",
+  },
   {
     slug: "lisboa",
     name: "Lisboa",
