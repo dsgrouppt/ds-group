@@ -76,17 +76,22 @@ export function Hero() {
 
           <div className="flex items-center gap-9 mt-12 flex-wrap">
             <Link href="/estudo-de-viabilidade" className="btn btn-dark">
-              Pedir Estudo de Viabilidade
+              Pedir Orçamento
             </Link>
-            <a href={`tel:${siteConfig.phone}`} className="link-arrow text-white">
-              <span className="bar" /> {siteConfig.phoneDisplay}
+            <a
+              href={siteConfig.whatsappUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="link-arrow text-white"
+            >
+              <span className="bar" /> Falar com a DS Projects
             </a>
           </div>
 
           <div className="flex flex-wrap items-center gap-x-8 gap-y-3 mt-10 text-[.78rem] text-mist/80 tracking-wide">
             <span>Prazo e orçamento contratuais, por escrito</span>
             <span className="hidden sm:inline text-mist/40">·</span>
-            <span>{services.length} especialidades, {siteConfig.locations.length} concelhos</span>
+            <span>{services.length} especialidades · cobertura nacional</span>
           </div>
         </motion.div>
       </div>
