@@ -39,7 +39,7 @@ export function DataStrip() {
                 {siteConfig.locations.length}
               </b>
               <small className="block mt-1.5 text-[.7rem] tracking-[.1em] uppercase text-[#9a9a9c]">
-                Concelhos de Atuação
+                Zonas com Página Dedicada
               </small>
             </div>
           </Reveal>
