@@ -79,6 +79,14 @@ export function Header() {
                                             >
                                               {siteConfig.phoneDisplay}
                                             </a>
+                                            <a
+                                                            href={siteConfig.whatsappVisitUrl}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="hidden lg:inline text-[.78rem] text-mist tracking-[.03em] hover:text-white transition-colors"
+                                                          >
+                                                          Agendar Visita
+                                            </a>
                                             <Link
                                                             href="/estudo-de-viabilidade"
                                                             className="btn btn-dark hidden lg:inline-flex"
@@ -121,6 +129,24 @@ export function Header() {
                                 >
                                 Estudo de Viabilidade
                       </Link>
+                      <a
+                                  href={siteConfig.whatsappVisitUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="btn btn-light mt-4"
+                                  onClick={() => setMenuOpen(false)}
+                                >
+                                Agendar Visita
+                      </a>
+                      <a
+                                  href={siteConfig.whatsappUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="btn btn-light mt-4"
+                                  onClick={() => setMenuOpen(false)}
+                                >
+                                Falar com a DS Projects
+                      </a>
                       <p className="mt-10 text-xs text-[#8d8d8f]">
                         {siteConfig.phoneDisplay} · {siteConfig.email}
                       </p>
