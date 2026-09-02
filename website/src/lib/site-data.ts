@@ -34,7 +34,28 @@ export const siteConfig = {
   whatsappUrl:
     "https://wa.me/351933356479?text=" +
     encodeURIComponent("Olá, gostaria de falar sobre um projeto de remodelação."),
-  locations: ["Lisboa", "Porto", "Cascais", "Oeiras", "Sintra", "Vila Nova de Gaia", "Matosinhos", "Almada"],
+  // Mesmo contacto WhatsApp, com intenção explícita de agendar visita —
+  // usado no CTA "Agendar Visita" (não existe reserva self-service de
+  // calendário; o agendamento real é feito pela equipa após o contacto,
+  // como em todo o processo comercial da DS Projects).
+  whatsappVisitUrl:
+    "https://wa.me/351933356479?text=" +
+    encodeURIComponent("Olá, gostaria de agendar uma visita técnica ao meu projeto."),
+  // Zonas com página SEO dedicada (/remodelacoes/[cidade]) — NÃO é uma lista
+  // fechada de área de cobertura. Leiria é a zona prioritária atual (missão
+  // CTO 29.08.2026); as restantes são a concentração histórica em
+  // Lisboa/Porto. Ver `serviceAreaNote` e `nationalCoverage` abaixo para a
+  // cobertura real (todo o território nacional).
+  locations: ["Leiria", "Lisboa", "Porto", "Cascais", "Oeiras", "Sintra", "Vila Nova de Gaia", "Matosinhos", "Almada"],
+  // Cobertura real do negócio (missão CTO 29.08.2026, substitui a antiga
+  // lista fechada de 8 concelhos): a DS Projects atua em todo o território
+  // nacional — Portugal continental e ilhas. Leiria é a zona de maior
+  // concentração de obras atual. Espanha é expansão prevista para 2027,
+  // ainda não é operação atual. Usado no JSON-LD (areaServed) e em textos
+  // públicos do site — nunca inventar cobertura além desta declaração.
+  nationalCoverage: true,
+  priorityArea: "Leiria",
+  serviceAreaNote: "Cobertura em todo o território nacional — zona prioritária atual: Leiria.",
 };
 
 /**
