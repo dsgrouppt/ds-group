@@ -11,16 +11,17 @@ export const dynamic = "force-dynamic";
  * ao valor de META_CAPI_ACCESS_TOKEN, se o token configurado ainda tem a
  * permissão ads_management e qual a mensagem de erro exata devolvida
  * pela Graph API quando o Meta bloqueia o acesso (ex.: "API access
- * blocked"). Mesmo padrão de autenticação por token partilhado dos
- * restantes endpoints /api/internal/* (reutiliza NOTIFICATIONS_INTERNAL_TOKEN
- * para não exigir uma nova variável de ambiente só para diagnóstico).
- * Nunca deve ser chamado por um browser de cliente.
+ * blocked"). Autenticado por CTO_DEBUG_TOKEN (variável dedicada, gerada
+ * para este diagnóstico e distinta dos tokens partilhados dos restantes
+ * endpoints /api/internal/*, para não misturar segredos operacionais com
+ * segredos de diagnóstico). Nunca deve ser chamado por um browser de
+ * cliente.
  */
 export async function GET(request: NextRequest) {
-  const expected = process.env.NOTIFICATIONS_INTERNAL_TOKEN;
+  const expected = process.env.CTO_DEBUG_TOKEN;
   if (!expected) {
     return NextResponse.json(
-      { error: "Diagnóstico CAPI não configurado (NOTIFICATIONS_INTERNAL_TOKEN em falta)." },
+      { error: "Diagnóstico CAPI não configurado (CTO_DEBUG_TOKEN em falta)." },
       { status: 503 }
     );
   }
