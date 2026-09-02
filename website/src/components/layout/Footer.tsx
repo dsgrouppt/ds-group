@@ -35,6 +35,9 @@ export function Footer() {
             <h4 className="text-[.7rem] tracking-[.18em] uppercase text-[#8d8d8f] mb-6 font-medium">
               Áreas de Atuação
             </h4>
+            <span className="block text-[.8rem] font-light text-[#8d8d8f] mb-3 leading-relaxed">
+              Cobertura nacional. Zonas com página dedicada:
+            </span>
             {localAreas.map((a) => (
               <Link key={a.slug} href={`/remodelacoes/${a.slug}`}>
                 {a.name}
@@ -61,10 +64,10 @@ export function Footer() {
             <a href={`tel:${siteConfig.phone}`}>{siteConfig.phoneDisplay}</a>
             <a href={`tel:${siteConfig.phoneAlt}`}>{siteConfig.phoneAltDisplay}</a>
             <a href={siteConfig.whatsappUrl} target="_blank" rel="noopener noreferrer">
-              WhatsApp
+              Falar com a DS Projects
             </a>
             <span className="block text-sm font-light text-[#c9c9c8] mb-[.9rem]">
-              {siteConfig.locations.join(" · ")}
+              {siteConfig.serviceAreaNote}
             </span>
           </div>
         </div>
