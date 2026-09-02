@@ -48,7 +48,11 @@ export function organizationJsonLd() {
     url: siteConfig.url,
     email: siteConfig.email,
     telephone: siteConfig.phone,
-    areaServed: siteConfig.locations,
+    // Cobertura nacional (missão CTO 29.08.2026) — a DS Projects atua em
+    // todo o território nacional, não apenas nas zonas com página SEO
+    // dedicada (`siteConfig.locations`). A zona prioritária (Leiria) é
+    // comunicada em texto visível do site, não no JSON-LD.
+    areaServed: { "@type": "Country", name: "Portugal" },
     parentOrganization: {
       "@type": "Organization",
       name: "DS Group",
@@ -69,7 +73,8 @@ export function serviceJsonLd(input: { name: string; description: string; url: s
       name: siteConfig.name,
       url: siteConfig.url,
     },
-    areaServed: siteConfig.locations,
+    // Cobertura nacional (missão CTO 29.08.2026) — ver nota em organizationJsonLd.
+    areaServed: { "@type": "Country", name: "Portugal" },
   };
 }
 
