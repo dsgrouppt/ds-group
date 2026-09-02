@@ -34,6 +34,15 @@ export function FinalCTA({
             <a href={`mailto:${siteConfig.email}`} className="text-mist border-b border-white/25">
               {siteConfig.email}
             </a>
+            &nbsp;·&nbsp;
+            <a
+              href={siteConfig.whatsappUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-mist border-b border-white/25"
+            >
+              Falar com a DS Projects
+            </a>
           </div>
         )}
       </Reveal>
