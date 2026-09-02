@@ -168,7 +168,18 @@ export async function sendCapiEvent(input: SendCapiEventInput): Promise<SendCapi
  * Usar antes de confiar no token em producao, e para diagnosticar quando
  * a Meta comecar a rejeitar os envios (token expirado ao fim de ~60 dias).
  */
-export async function debugCapiToken(): Promise<{ ok: boolean; scopes?: string[]; expiresAt?: number; error?: string }> {
+export async function debugCapiToken(): Promise<{
+  ok: boolean;
+  scopes?: string[];
+  expiresAt?: number;
+  error?: string;
+  errorCode?: number;
+  errorSubcode?: number;
+  errorType?: string;
+  errorUserTitle?: string;
+  errorUserMsg?: string;
+  fbtraceId?: string;
+}> {
   const accessToken = process.env.META_CAPI_ACCESS_TOKEN;
   if (!accessToken) return { ok: false, error: "token_nao_configurado" };
   try {
@@ -177,9 +188,28 @@ export async function debugCapiToken(): Promise<{ ok: boolean; scopes?: string[]
     );
     const json = await res.json().catch(() => ({} as Record<string, unknown>));
     const data = (json as { data?: { scopes?: string[]; expires_at?: number; error?: unknown } })?.data;
-    if (!res.ok || (json as { error?: unknown })?.error || !data) {
-      const message = (json as { error?: { message?: string } })?.error?.message || `HTTP ${res.status}`;
-      return { ok: false, error: message };
+    const errObj = (json as {
+      error?: {
+        message?: string;
+        code?: number;
+        error_subcode?: number;
+        type?: string;
+        error_user_title?: string;
+        error_user_msg?: string;
+        fbtrace_id?: string;
+      };
+    })?.error;
+    if (!res.ok || errObj || !data) {
+      return {
+        ok: false,
+        error: errObj?.message || `HTTP ${res.status}`,
+        errorCode: errObj?.code,
+        errorSubcode: errObj?.error_subcode,
+        errorType: errObj?.type,
+        errorUserTitle: errObj?.error_user_title,
+        errorUserMsg: errObj?.error_user_msg,
+        fbtraceId: errObj?.fbtrace_id,
+      };
     }
     const scopes = data.scopes || [];
     return { ok: scopes.includes("ads_management"), scopes, expiresAt: data.expires_at };
