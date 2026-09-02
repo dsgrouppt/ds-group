@@ -52,8 +52,8 @@ export function ServiceDetail({ service }: { service: Service }) {
                 <div key={item}>{item}</div>
               ))}
             </div>
-            <a href="#contacto" className="btn btn-dark mt-10 inline-flex">
-              Pedir Estudo de Viabilidade
+            <a href="/estudo-de-viabilidade" className="btn btn-dark mt-10 inline-flex">
+              Pedir Orçamento
             </a>
           </Reveal>
 
