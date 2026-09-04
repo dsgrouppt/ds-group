@@ -217,3 +217,184 @@ export async function debugCapiToken(): Promise<{
     return { ok: false, error: error instanceof Error ? error.message : "erro_desconhecido" };
   }
 }
+
+export interface CapiDiagnostics {
+  configured: {
+    pixelId: boolean;
+    accessToken: boolean;
+    appSecret: boolean;
+  };
+  graphApiVersion: string;
+  debugToken: {
+    ok: boolean;
+    scopes?: string[];
+    tokenType?: string;
+    expiresAt?: number;
+    error?: string;
+    errorCode?: number;
+    errorSubcode?: number;
+    errorType?: string;
+    fbtraceId?: string;
+  };
+  pixelInfo: {
+    ok: boolean;
+    id?: string;
+    name?: string;
+    ownerBusinessId?: string;
+    ownerBusinessName?: string;
+    adAccountIds?: string[];
+    error?: string;
+    errorCode?: number;
+    errorSubcode?: number;
+    errorType?: string;
+    fbtraceId?: string;
+  };
+  testEventSend: {
+    attempted: boolean;
+    ok: boolean;
+    eventsReceived?: number;
+    fbtraceId?: string;
+    error?: string;
+  };
+}
+
+/**
+ * Diagnostico consolidado (missao CTO 02.09.2026, Fase 1/2 do pedido
+ * "P0 - META CAPI API ACCESS BLOCKED - FECHAR DIAGNOSTICO E RESOLVER").
+ * Corre tres verificacoes independentes contra a Graph API para
+ * distinguir se o bloqueio "API access blocked" e especifico do endpoint
+ * debug_token (ferramenta de compliance/inspecao) ou se afeta tambem o
+ * envio real de eventos CAPI (o que realmente importa para o negocio).
+ * Nunca devolve o valor de META_CAPI_ACCESS_TOKEN / META_APP_SECRET -
+ * apenas metadados publicos devolvidos pela propria Graph API (IDs,
+ * nomes, tipos de erro, fbtrace_id) que a Meta ja no envia de volta.
+ */
+export async function runCapiDiagnostics(): Promise<CapiDiagnostics> {
+  const pixelId = process.env.META_PIXEL_ID;
+  const accessToken = process.env.META_CAPI_ACCESS_TOKEN;
+  const appSecret = process.env.META_APP_SECRET;
+
+  const result: CapiDiagnostics = {
+    configured: {
+      pixelId: Boolean(pixelId),
+      accessToken: Boolean(accessToken),
+      appSecret: Boolean(appSecret),
+    },
+    graphApiVersion: GRAPH_API_VERSION,
+    debugToken: { ok: false },
+    pixelInfo: { ok: false },
+    testEventSend: { attempted: false, ok: false },
+  };
+
+  if (!pixelId || !accessToken) {
+    result.debugToken = { ok: false, error: "capi_nao_configurado" };
+    result.pixelInfo = { ok: false, error: "capi_nao_configurado" };
+    return result;
+  }
+
+  // 1) debug_token - inspeciona o proprio token (scopes, tipo, expiracao).
+  try {
+    const res = await fetch(
+      `https://graph.facebook.com/debug_token?input_token=${encodeURIComponent(accessToken)}&access_token=${encodeURIComponent(accessToken)}`
+    );
+    const json = await res.json().catch(() => ({} as Record<string, unknown>));
+    const data = (json as {
+      data?: { scopes?: string[]; expires_at?: number; type?: string };
+    })?.data;
+    const errObj = (json as {
+      error?: {
+        message?: string;
+        code?: number;
+        error_subcode?: number;
+        type?: string;
+        fbtrace_id?: string;
+      };
+    })?.error;
+    if (!res.ok || errObj || !data) {
+      result.debugToken = {
+        ok: false,
+        error: errObj?.message || `HTTP ${res.status}`,
+        errorCode: errObj?.code,
+        errorSubcode: errObj?.error_subcode,
+        errorType: errObj?.type,
+        fbtraceId: errObj?.fbtrace_id,
+      };
+    } else {
+      result.debugToken = {
+        ok: true,
+        scopes: data.scopes,
+        tokenType: data.type,
+        expiresAt: data.expires_at,
+      };
+    }
+  } catch (error) {
+    result.debugToken = { ok: false, error: error instanceof Error ? error.message : "erro_desconhecido" };
+  }
+
+  // 2) Metadados do proprio pixel (nome, business dono, ad accounts
+  //    associadas) - endpoint distinto do debug_token, para testar se o
+  //    bloqueio e especifico de compliance tools ou generalizado.
+  try {
+    const res = await fetch(
+      `https://graph.facebook.com/${GRAPH_API_VERSION}/${pixelId}?fields=id,name,owner_business,ad_accounts{id,name}&access_token=${encodeURIComponent(accessToken)}`
+    );
+    const json = await res.json().catch(() => ({} as Record<string, unknown>));
+    const errObj = (json as {
+      error?: { message?: string; code?: number; error_subcode?: number; type?: string; fbtrace_id?: string };
+    })?.error;
+    if (!res.ok || errObj) {
+      result.pixelInfo = {
+        ok: false,
+        error: errObj?.message || `HTTP ${res.status}`,
+        errorCode: errObj?.code,
+        errorSubcode: errObj?.error_subcode,
+        errorType: errObj?.type,
+        fbtraceId: errObj?.fbtrace_id,
+      };
+    } else {
+      const j = json as {
+        id?: string;
+        name?: string;
+        owner_business?: { id?: string; name?: string };
+        ad_accounts?: { data?: { id: string; name: string }[] };
+      };
+      result.pixelInfo = {
+        ok: true,
+        id: j.id,
+        name: j.name,
+        ownerBusinessId: j.owner_business?.id,
+        ownerBusinessName: j.owner_business?.name,
+        adAccountIds: j.ad_accounts?.data?.map((a) => a.id),
+      };
+    }
+  } catch (error) {
+    result.pixelInfo = { ok: false, error: error instanceof Error ? error.message : "erro_desconhecido" };
+  }
+
+  // 3) Envio real de um evento de teste (test_event_code isola-o do
+  //    Events Manager real - nunca conta como conversao nem gasta
+  //    dinheiro). E o teste que realmente importa: se isto funcionar,
+  //    CAPI esta operacional para o negocio mesmo que debug_token falhe.
+  const testEventCode = process.env.META_CAPI_TEST_EVENT_CODE;
+  if (testEventCode) {
+    result.testEventSend.attempted = true;
+    const sendResult = await sendCapiEvent({
+      eventName: "Lead",
+      actionSource: "system_generated",
+      userData: { email: "cto-diagnostico@dsprojects.pt" },
+      customData: { diagnostico: "missao-cto-02-09-2026" },
+    });
+    result.testEventSend.ok = sendResult.ok;
+    result.testEventSend.eventsReceived = sendResult.eventsReceived;
+    result.testEventSend.fbtraceId = sendResult.fbtraceId;
+    result.testEventSend.error = sendResult.error;
+  } else {
+    result.testEventSend = {
+      attempted: false,
+      ok: false,
+      error: "META_CAPI_TEST_EVENT_CODE nao configurado - envio de teste omitido para nao arriscar poluir dados reais.",
+    };
+  }
+
+  return result;
+}
