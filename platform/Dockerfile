@@ -92,8 +92,15 @@ ENV PORT=3001
 
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
 
-# Aplica o schema à base de dados antes de arrancar — seguro em produção
-# porque "db push" é idempotente (não altera nada se o schema já estiver
-# em sincronia). Alternativa mais formal: adotar "prisma migrate deploy"
-# com migrações versionadas quando a equipa crescer.
-CMD ["sh", "-c", "node node_modules/prisma/build/index.js db push --skip-generate --accept-data-loss && node server.js"]
+# Aplica o schema à base de dados antes de arrancar. "db push" é idempotente
+# para alterações não destrutivas (não altera nada se o schema já estiver em
+# sincronia). NAO usamos --accept-data-loss: essa flag aplicaria em silencio
+# qualquer alteração destrutiva (ex.: remover coluna, mudar tipo de forma
+# incompativel) sem confirmação, em cada deploy — incluindo deploys
+# disparados por commits que só tocam website/ (Railway faz redeploy do
+# platform em qualquer push a master, sem path filtering). Sem a flag, se o
+# push exigisse perda de dados, o comando falha e o deploy é bloqueado (o
+# comportamento seguro), em vez de destruir dados de produção em silêncio.
+# Alternativa mais formal a adotar quando a equipa crescer: "prisma migrate
+# deploy" com migrações versionadas (prisma/migrations/).
+CMD ["sh", "-c", "node node_modules/prisma/build/index.js db push --skip-generate && node server.js"]
