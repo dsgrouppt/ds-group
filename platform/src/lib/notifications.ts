@@ -154,9 +154,17 @@ export async function runScheduledNotificationChecks(now: Date = new Date()) {
     }
   }
 
+  // Inclui tambem as tarefas de reativacao pos-"Fechado Perdido" (doc 05
+  // §1.8/§7.2, ver crm/actions.ts REACTIVATION_DAYS) -- sem isto, a tarefa
+  // "Reativacao - Fechado Perdido (...)" nunca dispara notificacao porque o
+  // titulo nao comeca por "Follow-up D+" (defeito identificado na missao P0
+  // escala 04.09.2026, corrigido aqui).
   const dueFollowups = await prisma.task.findMany({
     where: {
-      title: { startsWith: "Follow-up D+" },
+      OR: [
+        { title: { startsWith: "Follow-up D+" } },
+        { title: { startsWith: "Reativação — Fechado Perdido" } },
+      ],
       status: { in: ["PENDENTE", "EM_CURSO"] },
       dueAt: { not: null, lte: now },
     },
