@@ -76,7 +76,7 @@ export function Hero() {
 
           <div className="flex items-center gap-9 mt-12 flex-wrap">
             <Link href="/estudo-de-viabilidade" className="btn btn-dark">
-              Pedir Orçamento
+              Pedir Estudo de Viabilidade
             </Link>
             <a
               href={siteConfig.whatsappUrl}
