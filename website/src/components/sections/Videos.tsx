@@ -5,7 +5,11 @@ import { PlaceholderMedia } from "@/components/ui/PlaceholderMedia";
 /**
  * Grelha de vídeos reais. Quando existir vídeo, definir `embedUrl` em
  * lib/site-data.ts (YouTube/Vimeo) — este componente troca automaticamente
- * o placeholder por um <iframe> responsivo.
+ * o placeholder por um <iframe> responsivo. Em alternativa, `src` aponta
+ * para um mp4 autoalojado em /public/videos (clips curtos de bastidores/obra
+ * filmados em telemóvel, sem conta YouTube/Vimeo disponível) — nesse caso
+ * usa-se um <video> nativo com poster, e `orientation: "vertical"` ajusta o
+ * cartão ao formato de telemóvel em vez do 16:9 padrão.
  */
 export function Videos() {
   return (
@@ -21,7 +25,7 @@ export function Videos() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {videos.map((video, i) => (
             <Reveal key={video.id} index={i} delayStep={0.08}>
-              <div className="video-card">
+              <div className={`video-card${video.orientation === "vertical" ? " vertical" : ""}`}>
                 {video.embedUrl ? (
                   <iframe
                     src={video.embedUrl}
@@ -30,6 +34,17 @@ export function Videos() {
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
                   />
+                ) : video.src ? (
+                  <video
+                    src={video.src}
+                    poster={video.poster}
+                    controls
+                    playsInline
+                    preload="none"
+                    className="absolute inset-0 h-full w-full object-cover"
+                  >
+                    <track kind="captions" />
+                  </video>
                 ) : (
                   <>
                     <PlaceholderMedia
@@ -48,6 +63,9 @@ export function Videos() {
                   </>
                 )}
               </div>
+              {video.src ? (
+                <p className="mt-3 text-sm text-mist">{video.title}</p>
+              ) : null}
             </Reveal>
           ))}
         </div>
