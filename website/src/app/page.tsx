@@ -5,6 +5,7 @@ import { Services } from "@/components/sections/Services";
 import { Manifesto } from "@/components/sections/Manifesto";
 import { Method } from "@/components/sections/Method";
 import { PortfolioGrid } from "@/components/sections/PortfolioGrid";
+import { Videos } from "@/components/sections/Videos";
 import { VideoTestimonials } from "@/components/sections/VideoTestimonials";
 import { Timeline } from "@/components/sections/Timeline";
 import { Team } from "@/components/sections/Team";
@@ -50,6 +51,7 @@ export default function HomePage() {
         </div>
       </section>
 
+      <Videos />
       <VideoTestimonials />
       <Timeline />
       <Team />
