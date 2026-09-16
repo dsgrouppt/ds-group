@@ -191,6 +191,7 @@ header.site-header.scrolled{
 /* ===== VIDEOS / TESTEMUNHOS ===== */
 .video-card,.testimonial-card{position:relative;overflow:hidden;cursor:pointer;}
 .video-card{aspect-ratio:16/9;}
+.video-card.vertical{aspect-ratio:9/16;max-width:360px;margin:0 auto;}
 .testimonial-card{aspect-ratio:3/4;}
 .play-btn{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:64px;height:64px;border-radius:50%;border:1px solid rgba(255,255,255,.6);display:flex;align-items:center;justify-content:center;z-index:2;transition:transform .4s var(--ease),background .4s var(--ease);}
 .video-card:hover .play-btn,.testimonial-card:hover .play-btn{transform:translate(-50%,-50%) scale(1.12);background:var(--gold);border-color:var(--gold);}
