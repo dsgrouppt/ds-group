@@ -228,9 +228,27 @@ export const timelineSteps: TimelineStep[] = [
 ];
 
 export const videos: VideoItem[] = [
-  { id: "v1", title: "Do Levantamento à Entrega — Ep. 01" },
-  { id: "v2", title: "Bastidores da Equipa Técnica" },
-  { id: "v3", title: "Como Fazemos um Orçamento" },
+  {
+    id: "v1",
+    title: "Obra em Curso — Interior",
+    src: "/videos/bastidores-obra-interior.mp4",
+    poster: "/videos/bastidores-obra-interior.jpg",
+    orientation: "vertical",
+  },
+  {
+    id: "v2",
+    title: "Antes da Intervenção — Sala com Acesso ao Jardim",
+    src: "/videos/antes-sala-jardim.mp4",
+    poster: "/videos/antes-sala-jardim.jpg",
+    orientation: "vertical",
+  },
+  {
+    id: "v3",
+    title: "Antes da Intervenção — Escadas e Estrutura",
+    src: "/videos/antes-escadas-estrutura.mp4",
+    poster: "/videos/antes-escadas-estrutura.jpg",
+    orientation: "vertical",
+  },
 ];
 
 export const mainNav = [
