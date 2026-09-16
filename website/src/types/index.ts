@@ -51,6 +51,10 @@ export interface VideoItem {
   id: string;
   title: string;
   embedUrl?: string; // URL de embed (YouTube/Vimeo) quando existir
+  /** Vídeo real autoalojado (mp4 em /public/videos) — usado quando não há embedUrl (clips curtos de bastidores/obra filmados em telemóvel, sem conta YouTube/Vimeo disponível). */
+  src?: string;
+  /** Imagem de pré-visualização (poster) mostrada antes do play, quando `src` está definido. */
+  poster?: string;
   /** Horizontal (16:9, YouTube) ou vertical (9:16, reels/shorts) — decide o layout do cartão. */
   orientation?: "horizontal" | "vertical";
 }
