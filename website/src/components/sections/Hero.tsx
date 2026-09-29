@@ -91,7 +91,7 @@ export function Hero() {
           <div className="flex flex-wrap items-center gap-x-8 gap-y-3 mt-10 text-[.78rem] text-mist/80 tracking-wide">
             <span>Prazo e orçamento contratuais, por escrito</span>
             <span className="hidden sm:inline text-mist/40">·</span>
-            <span>{services.length} especialidades · cobertura nacional</span>
+            <span>{services.length} especialidades · Leiria e região</span>
           </div>
         </motion.div>
       </div>
