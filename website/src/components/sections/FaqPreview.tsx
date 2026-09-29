@@ -9,12 +9,17 @@ import { LinkArrow } from "@/components/ui/LinkArrow";
  * com link para a lista completa em /faq. O JSON-LD FAQPage aqui reflete
  * apenas as perguntas visíveis nesta secção — a página /faq tem o seu
  * próprio schema com o conjunto completo.
+ *
+ * Estas 4 perguntas são escolhidas para NÃO repetir as 4 promessas já
+ * cobertas em detalhe na secção Garantias (prazo contratual, orçamento
+ * fechado, único interlocutor, dossier de garantia) — a homepage não deve
+ * dizer a mesma coisa duas vezes em duas secções seguidas.
  */
 const featuredQuestions = [
-  "Vou ter um único ponto de contacto durante a obra?",
-  "Como é feito o orçamento?",
-  "O que acontece se a obra ultrapassar o prazo acordado?",
-  "O que é entregue no final da obra?",
+  "Como funciona o primeiro contacto com a DS Projects?",
+  "Quanto tempo demora, em média, uma remodelação?",
+  "É possível fazer alterações a meio da obra?",
+  "As equipas técnicas são próprias ou subcontratadas?",
 ];
 
 export function FaqPreview() {
