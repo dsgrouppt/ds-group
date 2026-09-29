@@ -29,9 +29,8 @@ export function Team() {
 
         <Reveal index={1} className="max-w-[64ch]">
           <p className="text-graphite font-light leading-[1.85] text-[1.02rem]">
-            Cada projeto DS Projects passa por uma equipa multidisciplinar própria, organizada em
-            quatro funções centrais — cada uma com responsabilidade clara sobre uma parte do
-            resultado final, coordenadas por um único gestor de projeto perante o cliente.
+            Uma equipa multidisciplinar própria, organizada em quatro funções centrais,
+            coordenada por um único gestor de projeto perante o cliente.
           </p>
         </Reveal>
 
