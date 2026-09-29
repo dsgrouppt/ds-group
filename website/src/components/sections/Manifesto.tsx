@@ -14,13 +14,10 @@ export function Manifesto() {
             Vendemos a ausência de imprevistos.
           </h2>
           <p className="text-[1.05rem] text-graphite max-w-[46ch] leading-[1.85] font-light">
-            A DS Projects existe para quem já passou — ou teme passar — pela gestão informal de uma
-            obra: orçamentos que disparam sem aviso, prazos que se arrastam sem explicação, equipas
-            que desaparecem a meio do processo.
-          </p>
-          <p className="text-[1.05rem] text-graphite max-w-[46ch] leading-[1.85] font-light mt-5">
-            Assumimos essa gestão por si. Um único interlocutor. Reporte semanal. Um compromisso
-            contratual de prazo e orçamento — do primeiro esboço à última chave.
+            Existe para quem já passou — ou teme passar — pela gestão informal de uma obra:
+            orçamentos que disparam, prazos que se arrastam, equipas que desaparecem a meio.
+            Assumimos essa gestão por si, com um único interlocutor e um compromisso contratual
+            de prazo e orçamento.
           </p>
           <LinkArrow href="/#metodo" className="mt-10 text-black">
             Conhecer o Método
