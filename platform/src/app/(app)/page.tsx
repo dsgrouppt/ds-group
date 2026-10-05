@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/Badge";
 import { EVENT_TYPE_LABEL, TASK_STATUS_LABEL, LEAD_SOURCE_LABEL, DEAL_STAGE_ORDER, DEAL_STAGE_LABEL } from "@/lib/enums";
 import { formatEuro } from "@/lib/format";
+import { Meta100kCard } from "@/components/dashboard/Meta100kCard";
 
 export const dynamic = "force-dynamic";
 
@@ -215,6 +216,8 @@ export default async function DashboardPage() {
         title="Dashboard"
         description="Visão executiva da atividade comercial, operacional e financeira da DS Group."
       />
+
+      {data.showCrm && <Meta100kCard />}
 
       {showFirstRow && (
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
